@@ -22,7 +22,6 @@ def load_data(dir):
     n_items = load_users_items(
         os.path.join(dir, 'items.txt')
     )
-    print('users: ', n_users, '\titems: ', n_items)
 
     train_data = load_train(
         os.path.join(dir, 'train.txt'), 
@@ -167,5 +166,9 @@ if __name__ == "__main__":
         print('please input a correct directory name.')
         exit()
 
-    load_data_dense(dir)
-    load_data_sparse(dir, 50)
+    n_users, n_items, tr_data, te_data, train_index, valid_index, \
+        test_index, social_data = load_data_dense(dir)
+
+
+    n_users, n_items, train_loader, valid_tr_loader, valid_te_loader, \
+        test_tr_loader, test_te_loader, social_loader = load_data_sparse(dir, 50)
