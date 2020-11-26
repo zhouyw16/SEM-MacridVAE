@@ -154,4 +154,4 @@ if trusts is not None:
     info(trusts, 'filter trusts ')
 
     # save trusts
-    save_trust(trusts, 'graph')
+    save_trust(trusts, 'social')
