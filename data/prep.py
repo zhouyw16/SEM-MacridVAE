@@ -13,6 +13,7 @@ except:
     print('please input a correct directory name.')
     exit()
 print('%s:' % dir)
+print()
 
 
 # read ratings and trusts if exists
@@ -57,13 +58,13 @@ print()
 
 
 # save users' unique indices
+np.random.seed(98765)
 users_id = pd.unique(ratings['user'])
+np.random.shuffle(users_id)
 pd.DataFrame({'id': users_id}).to_csv('users.txt', index=False)
 
 
 # split train/valid/test users
-np.random.seed(98765)
-np.random.shuffle(users_id)
 n_users = len(users_id)
 n_test  = int(0.1 * n_users)
 train_users = users_id[:(n_users - n_test * 2)]
@@ -114,18 +115,43 @@ test_ratings_tr,  test_ratings_te  = split(test_ratings)
 users_dict = dict((user_id, i) for (i, user_id) in enumerate(users_id))
 items_dict = dict((item_id, i) for (i, item_id) in enumerate(items_id))
 
-def savedf(df, name):
+def save_ratings(df, name):
     '''
-    mapping and save dataframe
+    mapping and save ratings
     '''
     users = list(map(lambda id: users_dict[id], df['user']))
     items = list(map(lambda id: items_dict[id], df['item']))
     pd.DataFrame({'user': users, 'item': items})    \
       .sort_values(by='user')                       \
-      .to_csv('%s.txt' % name, index=False)
+      .to_csv('%s.txt' % name, index=False) 
 
-savedf(train_ratings,    'train')
-savedf(valid_ratings_tr, 'valid_tr')
-savedf(valid_ratings_te, 'valid_te')
-savedf(test_ratings_tr,  'test_tr')
-savedf(test_ratings_te,  'test_te')
+save_ratings(train_ratings,    'train')
+save_ratings(valid_ratings_tr, 'valid_tr')
+save_ratings(valid_ratings_te, 'valid_te')
+save_ratings(test_ratings_tr,  'test_tr')
+save_ratings(test_ratings_te,  'test_te')
+print()
+
+
+def save_trust(df, name):
+    '''
+    mapping and save 
+    '''
+    trustors = list(map(lambda id: users_dict[id], df['trustor']))
+    trustees = list(map(lambda id: users_dict[id], df['trustee']))
+    pd.DataFrame({'trustor': trustors, 'trustee': trustees})    \
+      .sort_values(by='trustor')                                \
+      .to_csv('%s.txt' % name, index=False)   
+      
+      
+
+if trusts is not None:
+    info(trusts, 'init   trusts ')
+
+    # filter records whose trustor or trustee
+    trusts = trusts[trusts['trustee'].isin(users_id)] 
+    trusts = trusts[trusts['trustor'].isin(users_id)]
+    info(trusts, 'filter trusts ')
+
+    # save trusts
+    save_trust(trusts, 'graph')
