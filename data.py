@@ -162,10 +162,12 @@ def load_data_sparse(dir, batch_size, shuffle=False):
 
 if __name__ == "__main__":
     try:
-        dir = sys.argv[1]
+        dir = os.path.join('data', sys.argv[1])
     except:
         print('please input a correct directory name.')
         exit()
+
+    
 
     t = time.time()
     n_users, n_items, tr_data, te_data, train_index, valid_index, \
