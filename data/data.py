@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 import numpy as np
 import pandas as pd
@@ -166,9 +167,12 @@ if __name__ == "__main__":
         print('please input a correct directory name.')
         exit()
 
+    t = time.time()
     n_users, n_items, tr_data, te_data, train_index, valid_index, \
         test_index, social_data = load_data_dense(dir)
+    print('%.4fs' % (time.time() - t))
 
-
+    t = time.time()
     n_users, n_items, train_loader, valid_tr_loader, valid_te_loader, \
         test_tr_loader, test_te_loader, social_loader = load_data_sparse(dir, 50)
+    print('%.4fs' % (time.time() - t))
