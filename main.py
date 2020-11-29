@@ -18,15 +18,15 @@ parser.add_argument('--model', type=str, default='DisenSE',
 parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
-parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--batch_size', type=int, default=50)
 parser.add_argument('--weight_decay', type=float, default=0.0)
 parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--beta', type=float, default=0.2)
-parser.add_argument('--tau', type=float, default=0.1)
 parser.add_argument('--kfac', type=int, default=7)
 parser.add_argument('--dfac', type=int, default=100)
+parser.add_argument('--tau', type=float, default=0.1)
 parser.add_argument('--device', type=str, default='cpu',
                     help='cpu, cuda')
 args = parser.parse_args()
@@ -34,10 +34,10 @@ args = parser.parse_args()
 
 if args.seed < 0:
     args.seed = int(time.time())
-info = '%s-%gL-%dE-%dB-%gW-%gD-%gb-%dt-%dk-%dd-%ds' \
+info = '%s-%gL-%dE-%dB-%gW-%gD-%gb-%dk-%dd-%dt-%ds' \
     % (args.data, args.lr, args.epochs, args.batch_size,
        args.weight_decay, args.dropout, args.beta,
-       args.tau, args.kfac, args.dfac, args.seed)
+       args.kfac, args.dfac, args.tau, args.seed)
 print(info)
 
 
@@ -48,7 +48,7 @@ torch.manual_seed(args.seed)
 dir = os.path.join('data', args.data)
 n_users, n_items, tr_data, te_data, train_idx,    \
     valid_idx, test_idx, social_data = load_sparse_data(dir)
-net = load_net(args.model, args.tau, args.kfac, args.dfac)
+net = load_net(args.model, n_items, args.kfac, args.dfac, args.tau)
 
 
 def train(net, train_idx, valid_idx):
