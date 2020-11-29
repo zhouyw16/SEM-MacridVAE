@@ -34,7 +34,7 @@ args = parser.parse_args()
 
 if args.seed < 0:
     args.seed = int(time.time())
-info = '%s-%gL-%dE-%dB-%gW-%gD-%gb-%dk-%dd-%dt-%ds' \
+info = '%s-%gL-%dE-%dB-%gW-%gD-%gb-%dk-%dd-%gt-%ds' \
     % (args.data, args.lr, args.epochs, args.batch_size,
        args.weight_decay, args.dropout, args.beta,
        args.kfac, args.dfac, args.tau, args.seed)
