@@ -1,4 +1,3 @@
-
 import os
 import time
 import argparse
@@ -8,12 +7,14 @@ import torch
 import torch.optim as optim
 
 from data import load_sparse_data
-from model import DisenSE
+from model import load_net
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, required=True,
                     help='film-trust, ciao-dvd, etc.')
+parser.add_argument('--model', type=str, default='DisenSE',
+                    help='MultiDAE, MultiVAE, DisenVAE, DisenSE')
 parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
@@ -47,6 +48,7 @@ torch.manual_seed(args.seed)
 dir = os.path.join('data', args.data)
 n_users, n_items, tr_data, te_data, train_idx,    \
     valid_idx, test_idx, social_data = load_sparse_data(dir)
+net = load_net(args.model, args.tau, args.kfac, args.dfac)
 
 
 def train(net, train_idx, valid_idx):
@@ -70,8 +72,8 @@ def train(net, train_idx, valid_idx):
             end_idx = min(start_idx + args.batch_size, n_train)
             X = tr_data[train_idx[start_idx: end_idx]]
             A = social_data[train_idx[start_idx: end_idx]]
-            X = X.toarray()     # users-items matrix    TODO: cuda
-            A = A.toarray()     # users-users matrix    TODO: cuda
+            X = torch.Tensor(X.toarray())     # users-items matrix    TODO: cuda
+            A = torch.Tensor(A.toarray())     # users-users matrix    TODO: cuda
             optimizer.zero_grad()
             X_recon, X_mu, X_logvar, A_recon, A_mu, A_logvar = net(X, A)
             anneal = min(args.beta, update / anneals)
@@ -86,7 +88,7 @@ def train(net, train_idx, valid_idx):
         n100, r20, r50 = test(net, valid_idx)
         if n100 > best_n100:
             best_n100 = n100
-            torch.save(net.state_dict(),'disen_se.pkl')
+            torch.save(net.state_dict(), 'model/%s.pkl' % args.model)
         print('time: %.3f' % (time.time() - t))
 
 
@@ -100,9 +102,9 @@ def test(net, idx):
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
             A = social_data[idx[start_idx: end_idx]]
-            X_tr = X_tr.toarray()
-            X_te = X_te.toarray()
-            A = A.toarray()
+            X_tr = torch.Tensor(X_tr.toarray())
+            X_te = torch.Tensor(X_te.toarray())
+            A = torch.Tensor(A.toarray())
             X_tr_recon, _, _, _, _, _ = net(X_tr, A)
 
             # exclude X_tr_recon's samples from tr_data
@@ -149,10 +151,14 @@ def recall_kth(outputs, labels, k=50):
     return recall
 
 
+
+if os.path.exists('model'):
+    os.mkdir('model')
+
+
 if args.mode == 'train':
     print('training ...')
     t = time.time()
-    net = DisenSE()
     try:
         train(net, train_idx, valid_idx)
     except KeyboardInterrupt:
@@ -163,8 +169,7 @@ if args.mode == 'train':
 if args.mode == 'test':
     print('testing ...')
     t = time.time()
-    net = DisenSE()
-    net.load_state_dict(torch.load('disen_se.pkl'))
+    net.load_state_dict(torch.load('model/%s.pkl' % args.model))
     test(net, test_idx)
     print('test time: %.3f' % (time.time() - t))
 
