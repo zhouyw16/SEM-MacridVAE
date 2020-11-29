@@ -5,8 +5,6 @@ import time
 import numpy as np
 import pandas as pd
 from scipy import sparse
-import torch
-import torch.utils.data as Data
 
 
 def load_data(dir):
@@ -95,69 +93,26 @@ def load_social(file, n_users):
     return data
 
 
-def load_data_dense(dir):
+def load_sparse_data(dir):
     '''
     load whole tr_ratings, te_ratings and social information
     '''
     n_users, n_items, train_data, valid_tr_data, valid_te_data, \
         test_tr_data, test_te_data, social_data = load_data(dir)
-    
+    empty_data = sparse.csr_matrix(train_data.shape, dtype=np.float)
+
     tr_data = sparse.vstack([train_data, valid_tr_data, test_tr_data])
-    te_data = sparse.vstack([train_data, valid_te_data, test_te_data])
+    te_data = sparse.vstack([empty_data, valid_te_data, test_te_data])
 
     n_train = train_data.shape[0]
     n_valid = valid_tr_data.shape[0]
     n_test  = test_tr_data.shape[0]
-    train_index = range(n_train)
-    valid_index = range(n_train, n_train + n_valid)
-    test_index  = range(n_train + n_valid, n_train + n_valid + n_test)
+    train_idx = range(n_train)
+    valid_idx = range(n_train, n_train + n_valid)
+    test_idx  = range(n_train + n_valid, n_train + n_valid + n_test)
 
     return n_users, n_items, tr_data, te_data, \
-        train_index, valid_index, test_index, social_data
-
-
-class SparseDataset(Data.Dataset):
-    def __init__(self, data):
-        self.data = data
-
-    def __len__(self):
-        return self.data.shape[0]
-
-    def __getitem__(self, index):
-        data = self.data[index].tocoo()
-        index = torch.LongTensor(np.vstack((data.row, data.col)))
-        value = torch.FloatTensor(data.data)
-        shape = torch.Size(data.shape)
-        data = torch.sparse.FloatTensor(index, value, shape)
-        return data
-
-def sparse_collate(batch):
-    return torch.cat(batch, 0)
-
-def sparse_loader(data, batch_size, shuffle=False):
-    return Data.DataLoader(
-        SparseDataset(data), 
-        batch_size=batch_size, 
-        shuffle=shuffle, 
-        collate_fn=sparse_collate
-    )
-
-def load_data_sparse(dir, batch_size, shuffle=False):
-    '''
-    load torch dataloader
-    '''
-    n_users, n_items, train_data, valid_tr_data, valid_te_data, \
-        test_tr_data, test_te_data, social_data = load_data(dir)
-
-    train_loader    = sparse_loader(train_data,    batch_size, shuffle)
-    valid_tr_loader = sparse_loader(valid_tr_data, batch_size, shuffle)
-    valid_te_loader = sparse_loader(valid_te_data, batch_size, shuffle)
-    test_tr_loader  = sparse_loader(test_tr_data,  batch_size, shuffle)
-    test_te_loader  = sparse_loader(test_te_data,  batch_size, shuffle)
-    social_loader   = sparse_loader(social_data,   batch_size, shuffle)
-
-    return n_users, n_items, train_loader, valid_tr_loader, \
-        valid_te_loader, test_tr_loader, test_te_loader, social_loader
+        train_idx, valid_idx, test_idx, social_data
 
 
 if __name__ == "__main__":
@@ -167,14 +122,8 @@ if __name__ == "__main__":
         print('please input a correct directory name.')
         exit()
 
-    
 
     t = time.time()
-    n_users, n_items, tr_data, te_data, train_index, valid_index, \
-        test_index, social_data = load_data_dense(dir)
-    print('%.4fs' % (time.time() - t))
-
-    t = time.time()
-    n_users, n_items, train_loader, valid_tr_loader, valid_te_loader, \
-        test_tr_loader, test_te_loader, social_loader = load_data_sparse(dir, 50)
+    n_users, n_items, tr_data, te_data, train_idx,    \
+        valid_idx, test_idx, social_data = load_sparse_data(dir)
     print('%.4fs' % (time.time() - t))
