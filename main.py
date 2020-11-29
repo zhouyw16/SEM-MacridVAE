@@ -46,9 +46,10 @@ torch.manual_seed(args.seed)
     
 
 dir = os.path.join('data', args.data)
-n_users, n_items, tr_data, te_data, train_idx,    \
+n_users, n_items, tr_data, te_data, train_idx,      \
     valid_idx, test_idx, social_data = load_sparse_data(dir)
-net = load_net(args.model, n_items, args.kfac, args.dfac, args.tau)
+net = load_net(args.model, n_items, args.kfac,      \
+               args.dfac, args.dropout, args.tau)
 
 
 def train(net, train_idx, valid_idx):
@@ -71,9 +72,12 @@ def train(net, train_idx, valid_idx):
         for start_idx in range(0, n_train, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_train)
             X = tr_data[train_idx[start_idx: end_idx]]
-            A = social_data[train_idx[start_idx: end_idx]]
-            X = torch.Tensor(X.toarray())     # users-items matrix    TODO: cuda
-            A = torch.Tensor(A.toarray())     # users-users matrix    TODO: cuda
+            X = torch.Tensor(X.toarray())           # users-items matrix    TODO: cuda
+            if social_data:
+                A = social_data[train_idx[start_idx: end_idx]]
+                A = torch.Tensor(A.toarray())       # users-users matrix    TODO: cuda
+            else:
+                A = None
             optimizer.zero_grad()
             X_recon, X_mu, X_logvar, A_recon, A_mu, A_logvar = net(X, A)
             anneal = min(args.beta, update / anneals)
@@ -101,10 +105,13 @@ def test(net, idx):
             end_idx = min(start_idx + args.batch_size, n_test)
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
-            A = social_data[idx[start_idx: end_idx]]
             X_tr = torch.Tensor(X_tr.toarray())
             X_te = torch.Tensor(X_te.toarray())
-            A = torch.Tensor(A.toarray())
+            if social_data:
+                A = social_data[train_idx[start_idx: end_idx]]
+                A = torch.Tensor(A.toarray())
+            else:
+                A = None
             X_tr_recon, _, _, _, _, _ = net(X_tr, A)
 
             # exclude X_tr_recon's samples from tr_data
@@ -152,7 +159,7 @@ def recall_kth(outputs, labels, k=50):
 
 
 
-if os.path.exists('model'):
+if not os.path.exists('model'):
     os.mkdir('model')
 
 
