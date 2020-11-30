@@ -21,7 +21,7 @@ parser.add_argument('--mode', type=str, default='train',
 parser.add_argument('--seed', type=int, default=98765)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--epochs', type=int, default=200)
-parser.add_argument('--batch_size', type=int, default=500)
+parser.add_argument('--batch_size', type=int, default=2000)
 parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--beta', type=float, default=0.2)
@@ -47,7 +47,7 @@ torch.manual_seed(args.seed)
 
 device = torch.device(args.device \
         if torch.cuda.is_available() else 'cpu')
-    
+
 
 dir = os.path.join('data', args.data)
 n_users, n_items, tr_data, te_data, train_idx,  \
@@ -86,10 +86,10 @@ def train(net, train_idx, valid_idx):
             else:
                 A = None
             optimizer.zero_grad()
-            X_recon, X_mu, X_logvar, A_recon, A_mu, A_logvar = net(X, A)
+            X_logits, X_mu, X_logvar, A_logits, A_mu, A_logvar = net(X, A)
             anneal = min(args.beta, update / anneals)
-            loss = criterion(X, X_recon, X_mu, X_logvar,
-                             A, A_recon, A_mu, A_logvar, anneal)
+            loss = criterion(X, X_logits, X_mu, X_logvar,
+                             A, A_logits, A_mu, A_logvar, anneal)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -113,20 +113,21 @@ def test(net, idx):
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
             X_tr = torch.Tensor(X_tr.toarray()).to(device)
-            X_te = torch.Tensor(X_te.toarray()).to(device)
+            X_te = torch.Tensor(X_te.toarray())
             if social_data is not None:
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray()).to(device)
             else:
                 A = None
-            X_tr_recon, _, _, _, _, _ = net(X_tr, A)
+            X_tr_logits, _, _, _, _, _ = net(X_tr, A)
 
-            # exclude X_tr_recon's samples from tr_data
-            X_tr_recon[torch.nonzero(X_tr, as_tuple=True)] = float('-inf')
+            # exclude X_tr_logits's samples from tr_data
+            X_tr_logits[torch.nonzero(X_tr, as_tuple=True)] = float('-inf')
+            X_tr_logits = X_tr_logits.cpu()
 
-            n100s.append(ndcg_kth(X_tr_recon, X_te, k=100))
-            r20s.append(recall_kth(X_tr_recon, X_te, k=20))
-            r50s.append(recall_kth(X_tr_recon, X_te, k=50))
+            n100s.append(ndcg_kth(X_tr_logits, X_te, k=100))
+            r20s.append(recall_kth(X_tr_logits, X_te, k=20))
+            r50s.append(recall_kth(X_tr_logits, X_te, k=50))
             
     n100s = torch.cat(n100s)
     r20s = torch.cat(r20s)
@@ -138,7 +139,8 @@ def test(net, idx):
     return n100s.mean(), r20s.mean(), r50s.mean()
 
 
-def visualize():
+def visualize(idx):
+
     return
 
 
@@ -190,4 +192,4 @@ if args.mode == 'train' or args.mode == 'test':
 
 if args.mode == 'visualize':
     print('visualizing...')
-    visualize()
+    visualize(train_idx)
