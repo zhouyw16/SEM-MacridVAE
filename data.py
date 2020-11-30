@@ -8,11 +8,32 @@ from scipy import sparse
 
 
 def load_data(dir):
+    '''
+    load whole tr_ratings, te_ratings and social information
+    '''
+    n_users, n_items, train_data, valid_tr_data, valid_te_data, \
+        test_tr_data, test_te_data, social_data = load_perp_data(dir)
+    empty_data = sparse.csr_matrix(train_data.shape, dtype=np.float)
+
+    tr_data = sparse.vstack([train_data, valid_tr_data, test_tr_data])
+    te_data = sparse.vstack([empty_data, valid_te_data, test_te_data])
+
+    n_train = train_data.shape[0]
+    n_valid = valid_tr_data.shape[0]
+    n_test  = test_tr_data.shape[0]
+    train_idx = range(n_train)
+    valid_idx = range(n_train, n_train + n_valid)
+    test_idx  = range(n_train + n_valid, n_train + n_valid + n_test)
+
+    return n_users, n_items, tr_data, te_data, \
+        train_idx, valid_idx, test_idx, social_data
+
+
+def load_perp_data(dir):
     ''' 
     load data from preprocessed txt files
     '''
     dir = os.path.join(dir, 'prep')
-
 
     n_users = load_users_items(
         os.path.join(dir, 'users.txt')
@@ -93,27 +114,6 @@ def load_social(file, n_users):
     return data
 
 
-def load_sparse_data(dir):
-    '''
-    load whole tr_ratings, te_ratings and social information
-    '''
-    n_users, n_items, train_data, valid_tr_data, valid_te_data, \
-        test_tr_data, test_te_data, social_data = load_data(dir)
-    empty_data = sparse.csr_matrix(train_data.shape, dtype=np.float)
-
-    tr_data = sparse.vstack([train_data, valid_tr_data, test_tr_data])
-    te_data = sparse.vstack([empty_data, valid_te_data, test_te_data])
-
-    n_train = train_data.shape[0]
-    n_valid = valid_tr_data.shape[0]
-    n_test  = test_tr_data.shape[0]
-    train_idx = range(n_train)
-    valid_idx = range(n_train, n_train + n_valid)
-    test_idx  = range(n_train + n_valid, n_train + n_valid + n_test)
-
-    return n_users, n_items, tr_data, te_data, \
-        train_idx, valid_idx, test_idx, social_data
-
 
 if __name__ == "__main__":
     try:
@@ -122,8 +122,7 @@ if __name__ == "__main__":
         print('please input a correct directory name.')
         exit()
 
-
     t = time.time()
     n_users, n_items, tr_data, te_data, train_idx,    \
-        valid_idx, test_idx, social_data = load_sparse_data(dir)
+        valid_idx, test_idx, social_data = load_data(dir)
     print('%.4fs' % (time.time() - t))

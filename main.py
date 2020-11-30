@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from data import load_sparse_data
+from data import load_data
+from embed import load_embed
 from model import load_net
 
 
@@ -18,14 +19,14 @@ parser.add_argument('--model', type=str, default='DisenSE',
 parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
-parser.add_argument('--lr', type=float, default=0.001)
-parser.add_argument('--epochs', type=int, default=30)
-parser.add_argument('--batch_size', type=int, default=50)
-parser.add_argument('--weight_decay', type=float, default=0.0)
+parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--epochs', type=int, default=200)
+parser.add_argument('--batch_size', type=int, default=500)
+parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--beta', type=float, default=0.2)
 parser.add_argument('--kfac', type=int, default=7)
-parser.add_argument('--dfac', type=int, default=100)
+parser.add_argument('--dfac', type=int, default=200)
 parser.add_argument('--tau', type=float, default=0.1)
 parser.add_argument('--device', type=str, default='cpu',
                     help='cpu, cuda')
@@ -46,10 +47,12 @@ torch.manual_seed(args.seed)
     
 
 dir = os.path.join('data', args.data)
-n_users, n_items, tr_data, te_data, train_idx,      \
-    valid_idx, test_idx, social_data = load_sparse_data(dir)
-net = load_net(args.model, n_items, args.kfac,      \
-               args.dfac, args.dropout, args.tau)
+n_users, n_items, tr_data, te_data, train_idx,  \
+    valid_idx, test_idx, social_data = load_data(dir)
+items_embed, cores_embed = load_embed(dir)      \
+    if args.model == 'DisenEVAE' else None, None
+net = load_net(args.model, n_users, n_items, args.kfac, args.dfac, 
+               args.tau, args.dropout, items_embed, cores_embed)
 
 
 def train(net, train_idx, valid_idx):
@@ -60,20 +63,20 @@ def train(net, train_idx, valid_idx):
     n_train = len(train_idx)
     n_batches = int(np.ceil(n_train / args.batch_size))
     update = 0
-    anneals = 5 * n_batches
+    anneals = 500 * n_batches
 
     best_n100 = 0.0
     for epoch in range(args.epochs):
         net.train()
         running_loss = 0.0
-        # train_idx = np.random.permutation(train_idx)
+        train_idx = np.random.permutation(train_idx)
 
         t = time.time()
         for start_idx in range(0, n_train, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_train)
             X = tr_data[train_idx[start_idx: end_idx]]
             X = torch.Tensor(X.toarray())           # users-items matrix    TODO: cuda
-            if social_data:
+            if social_data is not None:
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray())       # users-users matrix    TODO: cuda
             else:
@@ -88,7 +91,7 @@ def train(net, train_idx, valid_idx):
             running_loss += loss.item()
             update += 1
 
-        print('[%3d] loss: %.3f' % (epoch, running_loss / n_train), end='\t')
+        print('[%3d] loss: %.3f' % (epoch, running_loss / n_batches), end='\t')
         n100, r20, r50 = test(net, valid_idx)
         if n100 > best_n100:
             best_n100 = n100
@@ -107,7 +110,7 @@ def test(net, idx):
             X_te  = te_data[idx[start_idx: end_idx]]
             X_tr = torch.Tensor(X_tr.toarray())
             X_te = torch.Tensor(X_te.toarray())
-            if social_data:
+            if social_data is not None:
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray())
             else:
@@ -125,9 +128,9 @@ def test(net, idx):
     r20s = torch.cat(r20s)
     r50s = torch.cat(r50s)
 
-    print('ndcg@100: %.5f (±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t')
-    print('recall@20: %.5f (±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t')
-    print('recall@50: %.5f (±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t')
+    print('ndcg@100: %.5f(±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t')
+    print('recall@20: %.5f(±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t')
+    print('recall@50: %.5f(±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t')
     return n100s.mean(), r20s.mean(), r50s.mean()
 
 
@@ -173,7 +176,7 @@ if args.mode == 'train':
     print('train time: %.3f' % (time.time() - t))
 
 
-if args.mode == 'test':
+if args.mode == 'train' or args.mode == 'test':
     print('testing ...')
     t = time.time()
     net.load_state_dict(torch.load('model/%s.pkl' % args.model))
