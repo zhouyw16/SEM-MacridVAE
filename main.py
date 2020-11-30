@@ -44,6 +44,9 @@ print(info)
 
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
+
+device = torch.device(args.device \
+        if torch.cuda.is_available() else 'cpu')
     
 
 dir = os.path.join('data', args.data)
@@ -53,6 +56,7 @@ items_embed, cores_embed = load_embed(dir)      \
     if args.model == 'DisenEVAE' else None, None
 net = load_net(args.model, n_users, n_items, args.kfac, args.dfac, 
                args.tau, args.dropout, items_embed, cores_embed)
+net.to(device)
 
 
 def train(net, train_idx, valid_idx):
@@ -75,10 +79,10 @@ def train(net, train_idx, valid_idx):
         for start_idx in range(0, n_train, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_train)
             X = tr_data[train_idx[start_idx: end_idx]]
-            X = torch.Tensor(X.toarray())           # users-items matrix    TODO: cuda
+            X = torch.Tensor(X.toarray()).to(device)     # users-items matrix
             if social_data is not None:
                 A = social_data[train_idx[start_idx: end_idx]]
-                A = torch.Tensor(A.toarray())       # users-users matrix    TODO: cuda
+                A = torch.Tensor(A.toarray()).to(device) # users-users matrix
             else:
                 A = None
             optimizer.zero_grad()
@@ -108,11 +112,11 @@ def test(net, idx):
             end_idx = min(start_idx + args.batch_size, n_test)
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
-            X_tr = torch.Tensor(X_tr.toarray())
-            X_te = torch.Tensor(X_te.toarray())
+            X_tr = torch.Tensor(X_tr.toarray()).to(device)
+            X_te = torch.Tensor(X_te.toarray()).to(device)
             if social_data is not None:
                 A = social_data[train_idx[start_idx: end_idx]]
-                A = torch.Tensor(A.toarray())
+                A = torch.Tensor(A.toarray()).to(device)
             else:
                 A = None
             X_tr_recon, _, _, _, _, _ = net(X_tr, A)
