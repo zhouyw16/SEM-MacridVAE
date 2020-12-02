@@ -21,7 +21,7 @@ parser.add_argument('--mode', type=str, default='train',
 parser.add_argument('--seed', type=int, default=98765)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--epochs', type=int, default=200)
-parser.add_argument('--batch_size', type=int, default=2000)
+parser.add_argument('--batch_size', type=int, default=800)
 parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--beta', type=float, default=0.2)
@@ -139,11 +139,6 @@ def test(net, idx):
     return n100s.mean(), r20s.mean(), r50s.mean()
 
 
-def visualize(idx):
-
-    return
-
-
 def ndcg_kth(outputs, labels, k=100):
     _, preds = torch.topk(outputs, k)                       # sorted top k index of outputs
     _, facts = torch.topk(labels, k)                        # min(k, labels.nnz(dim=1))
@@ -166,6 +161,46 @@ def recall_kth(outputs, labels, k=50):
     recall[torch.isnan(recall)] = 0
     return recall
 
+
+def visualize(net, idx):
+    net.eval()
+    n_visual = len(idx)
+    users = []
+    with torch.no_grad():
+        for start_idx in range(0, n_visual, args.batch_size):
+            end_idx = min(start_idx + args.batch_size, n_visual)
+            X = tr_data[idx[start_idx: end_idx]]
+            X = torch.Tensor(X.toarray()).to(device)
+            if social_data is not None:
+                A = social_data[train_idx[start_idx: end_idx]]
+                A = torch.Tensor(A.toarray()).to(device)
+            else:
+                A = None
+            _, X_mu, _, _, _, _ = net(X, A)
+            users.append(X_mu)
+    
+    users = torch.cat(users).cpu().numpy()
+    items = net.state_dict()['items'].cpu().numpy()
+    cores = net.state_dict()['cores'].cpu().numpy()
+
+
+    palette = np.array(
+        [[238, 27 , 39 , 80],  # _0. Red
+         [59 , 175, 81 , 80],  # _1. Green
+         [255, 127, 38 , 80],  # _2. Orange
+         [255, 129, 190, 80],  # _3. Pink
+         [153, 153, 153, 80],  # _4. Gray
+         [156, 78 , 161, 80],  # _5. Purple
+         [35 , 126, 181, 80]], # _6. Blue
+        dtype=np.float) / 255.0
+    
+    # normalize users, items, cores
+
+    # load items' ground categories
+
+    # match
+
+    return
 
 
 if not os.path.exists('model'):
@@ -192,4 +227,7 @@ if args.mode == 'train' or args.mode == 'test':
 
 if args.mode == 'visualize':
     print('visualizing...')
-    visualize(train_idx)
+    t = time.time()
+    net.load_state_dict(torch.load('model/%s.pkl' % args.model))
+    visualize(net, train_idx)
+    print('test time: %.3f' % (time.time() - t))

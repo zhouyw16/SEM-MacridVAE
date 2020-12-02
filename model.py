@@ -158,10 +158,10 @@ class DisenVAE(nn.Module):
 
 
     def cluster(self):
-        items = F.normalize(self.items, dim=1)
-        cores = F.normalize(self.cores, dim=1)
+        items = F.normalize(self.items, dim=1)      # M * D
+        cores = F.normalize(self.cores, dim=1)      # K * D
         cates = torch.mm(items, cores.t()) / self.tau
-        cates = F.softmax(cates, dim=1)
+        cates = F.softmax(cates, dim=1)             # M * K
         return items, cores, cates
 
 
@@ -197,7 +197,7 @@ class DisenVAE(nn.Module):
 
 
     def forward(self, X, A):
-        items, _, cates = self.cluster()
+        items, cores, cates = self.cluster()
         mu, logvar = self.encode(X, cates)
         z = self.sample(mu, logvar)
         logits = self.decode(z, items, cates)
