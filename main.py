@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 
 from data import load_data
 from embed import load_embed
@@ -179,10 +180,13 @@ def visualize(net, idx):
             _, X_mu, _, _, _, _ = net(X, A)
             users.append(X_mu)
     
-    users = torch.cat(users).cpu().numpy()
-    items = net.state_dict()['items'].cpu().numpy()
-    cores = net.state_dict()['cores'].cpu().numpy()
+    users = torch.cat(users).detach().cpu()
+    items = net.state_dict()['items'].detach().cpu()
+    cores = net.state_dict()['cores'].detach().cpu()
 
+    print(users.requires_grad)
+    print(items.requires_grad)
+    print(items.requires_grad)
 
     palette = np.array(
         [[238, 27 , 39 , 80],  # _0. Red
@@ -195,10 +199,19 @@ def visualize(net, idx):
         dtype=np.float) / 255.0
     
     # normalize users, items, cores
+    users = F.normalize(users)
+    items = F.normalize(items)
+    cores = F.normalize(cores)
 
     # load items' ground categories
+    # cates_pred  = 
+    # cates_label = load_cates()
+    
+    # match pred and ground categories
 
-    # match
+    # TSNE
+
+    # plot
 
     return
 
