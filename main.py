@@ -7,7 +7,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 
-from data import load_data
+from data import load_data, load_cates
 from embed import load_embed
 from model import load_net
 
@@ -15,8 +15,8 @@ from model import load_net
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, required=True,
                     help='film-trust, ciao-dvd, etc.')
-parser.add_argument('--model', type=str, default='DisenSE',
-                    help='MultiDAE, MultiVAE, DisenVAE, DisenSE')
+parser.add_argument('--model', type=str, default='DisenVAE',
+                    help='MultiDAE, MultiVAE, DisenVAE, DisenVAE')
 parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
@@ -184,10 +184,18 @@ def visualize(net, idx):
     items = net.state_dict()['items'].detach().cpu()
     cores = net.state_dict()['cores'].detach().cpu()
 
-    print(users.requires_grad)
-    print(items.requires_grad)
-    print(items.requires_grad)
 
+    # align categories with prototypes
+    cates_true = load_cates()
+    cates_true = match_cores_cates(items, cores, cates_true)
+
+    # nodes (items and users) prediction and ground truth
+    nodes = torch.cat((items, users))
+    print(nodes.shape)
+    nodes_pred = torch.mm(nodes, cores)
+
+
+    # plot pictures
     palette = np.array(
         [[238, 27 , 39 , 80],  # _0. Red
          [59 , 175, 81 , 80],  # _1. Green
@@ -198,22 +206,45 @@ def visualize(net, idx):
          [35 , 126, 181, 80]], # _6. Blue
         dtype=np.float) / 255.0
     
-    # normalize users, items, cores
-    users = F.normalize(users)
-    items = F.normalize(items)
-    cores = F.normalize(cores)
 
-    # load items' ground categories
-    # cates_pred  = 
-    # cates_label = load_cates()
-    
-    # match pred and ground categories
+        
 
     # TSNE
 
     # plot
 
     return
+
+
+def match_cores_cates(self, items, cores, cates):
+    '''
+    items = embedding matrix [m, d]
+    cores = embedding matrix [k, d]
+    cates = one-hot matrix   [m, k] 
+    '''
+    # normalize items, cores
+    items = F.normalize(items)
+    cores = F.normalize(cores)
+    
+    # align categories with prototypes
+    cates_centers = []
+    for ki in args.kfac:
+        cates_centers.append(torch.sum(items[cates_labels == ki], 
+                                    dim=0, keepdim=True))
+    cates_centers = torch.cat(cates_centers)
+    cates_centers = F.normalize(cates_centers)
+    cores_cates = torch.mm(cores, cates_labels.t())
+    cores2cates = torch.argmax(cores_cates, dim=1)
+    cates2cores = torch.argmax(cores_cates, dim=0)
+
+    if len(set(cores2cates)) == args.k and  \
+    len(set(cates2cores)) == args.k:
+        for ki in args.kfac:
+            if cores2cates[cates2cores[ki]] != ki:
+                break
+        else:
+            return True, cates2cores
+    return False, None 
 
 
 if not os.path.exists('model'):

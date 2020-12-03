@@ -15,8 +15,8 @@ def load_net(model, N, M, K, D, tau, dropout, items, cores):
         return DisenVAE(M, K, D, tau, dropout)
     elif model == 'DisenEVAE':
         return DisenEVAE(M, K, D, tau, dropout, items, cores)
-    elif model == 'DisenSE':
-        return DisenSE(N, M, K, D, tau, dropout)
+    elif model == 'DisenSR':
+        return DisenSR(N, M, K, D, tau, dropout)
 
 
 
@@ -219,9 +219,9 @@ class DisenEVAE(DisenVAE):
 
 
 
-class DisenSE(nn.Module):
+class DisenSR(nn.Module):
     def __init__(self, N, M, K, D, tau, dropout):
-        super(DisenSE, self).__init__()
+        super(DisenSR, self).__init__()
 
         self.N = N
         self.M = M
