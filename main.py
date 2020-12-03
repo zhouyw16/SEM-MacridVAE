@@ -6,6 +6,10 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+from scipy import sparse
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from matplotlib import pyplot as plt 
 
 from data import load_data, load_cates
 from embed import load_embed
@@ -79,9 +83,11 @@ def train(net, train_idx, valid_idx):
         t = time.time()
         for start_idx in range(0, n_train, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_train)
+            assert sparse.isspmatrix(tr_data)
             X = tr_data[train_idx[start_idx: end_idx]]
             X = torch.Tensor(X.toarray()).to(device)     # users-items matrix
             if social_data is not None:
+                assert sparse.isspmatrix(social_data)
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray()).to(device) # users-users matrix
             else:
@@ -111,11 +117,14 @@ def test(net, idx):
     with torch.no_grad():
         for start_idx in range(0, n_test, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_test)
+            assert sparse.isspmatrix(tr_data)
+            assert sparse.isspmatrix(te_data)
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
             X_tr = torch.Tensor(X_tr.toarray()).to(device)
             X_te = torch.Tensor(X_te.toarray())
             if social_data is not None:
+                assert sparse.isspmatrix(social_data)
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray()).to(device)
             else:
@@ -184,15 +193,33 @@ def visualize(net, idx):
     items = net.state_dict()['items'].detach().cpu()
     cores = net.state_dict()['cores'].detach().cpu()
 
+    users = F.normalize(users)  \
+            .view(n_users, args.kfac, args.dfac)
+    items = F.normalize(items)
+    cores = F.normalize(cores)
 
     # align categories with prototypes
-    cates_true = load_cates()
-    cates_true = match_cores_cates(items, cores, cates_true)
+    items_cates = load_cates()
+    items_cates = match_cores_cates(items, cores, items_cates)
+    items_item, items_cate = items_cates.nonzero()
+
+    # users and the categories they bought
+    assert sparse.isspmatrix(tr_data) and sparse.isspmatrix(items_cates)
+    t = time.time()
+    users_cates = np.dot(tr_data[idx], items_cates)
+    print(time.time() - t)
+    t = time.time()
+    users_cates_ = tr_data[idx] * items_cates
+    print(time.time() - t)
+    print((users_cates == users_cates_).all())
+    users_user, users_cate = users_cates.nonzero()
+    users = users[users_user, users_cate, :]
 
     # nodes (items and users) prediction and ground truth
     nodes = torch.cat((items, users))
     print(nodes.shape)
-    nodes_pred = torch.mm(nodes, cores)
+    nodes_pred = torch.argmax(torch.mm(nodes, cores.t()), dim=1)
+    nodes_true = torch.cat(items_cate, users_cate)
 
 
     # plot pictures
@@ -206,50 +233,74 @@ def visualize(net, idx):
          [35 , 126, 181, 80]], # _6. Blue
         dtype=np.float) / 255.0
     
+    col_pred = palette[nodes_pred]
+    col_true = palette[nodes_true]
 
-        
+    try:
+        nodes_2d = np.load('run/tsne.npy')
+    except:
+        print('tsne...')
+        nodes_kd = PCA(n_components=args.kfac).fit_transform(nodes) \
+                   if args.dfac > args.kfac else nodes
+        nodes_2d = TSNE(n_jobs=8).fit_transform(nodes_kd)
+        np.save('run/tsne.npy')
+    plot('tsne2d-nodes-pred', nodes_2d, col_pred)
+    plot('tsne2d-nodes-gold', nodes_2d, col_true)
+    plot('tsne2d-items-pred', nodes_2d[:n_items], col_pred[:n_items])
+    plot('tsne2d-items-gold', nodes_2d[:n_items], col_true[:n_items])
+    plot('tsne2d-users-pred', nodes_2d[n_items:], col_pred[n_items:])
+    plot('tsne2d-users-gold', nodes_2d[n_items:], col_true[n_items:])
 
-    # TSNE
 
-    # plot
-
-    return
-
-
-def match_cores_cates(self, items, cores, cates):
+def match_cores_cates(items, cores, items_cates):
     '''
+    align categories with prototypes 
+
     items = embedding matrix [m, d]
     cores = embedding matrix [k, d]
-    cates = one-hot matrix   [m, k] 
+    items_cates = sparse one-hot matrix [m, k]
     '''
-    # normalize items, cores
-    items = F.normalize(items)
-    cores = F.normalize(cores)
-    
-    # align categories with prototypes
-    cates_centers = []
-    for ki in args.kfac:
-        cates_centers.append(torch.sum(items[cates_labels == ki], 
-                                    dim=0, keepdim=True))
+    cates = np.argmax(items_cates, axis=1)
+    cates_centers = [torch.sum(items[cates == ki], dim=0, keepdim=True) 
+                    for ki in range(args.kfac)]
     cates_centers = torch.cat(cates_centers)
     cates_centers = F.normalize(cates_centers)
-    cores_cates = torch.mm(cores, cates_labels.t())
-    cores2cates = torch.argmax(cores_cates, dim=1)
-    cates2cores = torch.argmax(cores_cates, dim=0)
+    cores_cates = torch.mm(cores, cates_centers.t())
+    cates2cores = torch.argmax(cores_cates, dim=1)
+    cores2cates = torch.argmax(cores_cates, dim=0)
 
-    if len(set(cores2cates)) == args.k and  \
-    len(set(cates2cores)) == args.k:
+    print('cores: ', end='  ')
+    print('%d' % ki for ki in range(args.kfac))
+    print('cates: ', end='  ')
+    print('%d' % cates2cores[ki] for ki in range(args.kfac))
+    print()
+    print('cates: ', end='  ')
+    print('%d' % ki for ki in range(args.kfac))
+    print('cores: ', end='  ')
+    print('%d' % cores2cates[ki] for ki in range(args.kfac))
+
+    if len(set(cores2cates)) == args.kfac and  \
+       len(set(cates2cores)) == args.kfac:
         for ki in args.kfac:
             if cores2cates[cates2cores[ki]] != ki:
                 break
         else:
-            return True, cates2cores
-    return False, None 
+            return items_cates[:, cates2cores]
+    print('Some prototypes do not align well with categories.')
+    exit()
+
+
+def plot(fname, xy, color, marksz=2.0):
+    plt.figure()
+    plt.scatter(x=xy[:, 0], y=xy[:, 1], c=color, s=marksz)
+    plt.savefig('%s.png' % fname)
+
 
 
 if not os.path.exists('model'):
     os.mkdir('model')
-
+if not os.path.exists('run'):
+    os.mkdir('run')
 
 if args.mode == 'train':
     print('training ...')
