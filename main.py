@@ -83,11 +83,9 @@ def train(net, train_idx, valid_idx):
         t = time.time()
         for start_idx in range(0, n_train, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_train)
-            assert sparse.isspmatrix(tr_data)
             X = tr_data[train_idx[start_idx: end_idx]]
             X = torch.Tensor(X.toarray()).to(device)     # users-items matrix
             if social_data is not None:
-                assert sparse.isspmatrix(social_data)
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray()).to(device) # users-users matrix
             else:
@@ -117,14 +115,11 @@ def test(net, idx):
     with torch.no_grad():
         for start_idx in range(0, n_test, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_test)
-            assert sparse.isspmatrix(tr_data)
-            assert sparse.isspmatrix(te_data)
             X_tr  = tr_data[idx[start_idx: end_idx]]
             X_te  = te_data[idx[start_idx: end_idx]]
             X_tr = torch.Tensor(X_tr.toarray()).to(device)
             X_te = torch.Tensor(X_te.toarray())
             if social_data is not None:
-                assert sparse.isspmatrix(social_data)
                 A = social_data[train_idx[start_idx: end_idx]]
                 A = torch.Tensor(A.toarray()).to(device)
             else:
