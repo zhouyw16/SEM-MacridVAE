@@ -11,7 +11,8 @@ def load_embed():
 
 
 def load_embed_docs(dir):
-    model = 
+    return
+    
 
 def load_embed_pics(dir):
     model = models.resnet18(pretrained=True)

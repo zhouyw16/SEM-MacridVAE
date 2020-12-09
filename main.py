@@ -54,7 +54,7 @@ device = torch.device(args.device \
         if torch.cuda.is_available() else 'cpu')
 
 
-dir = os.path.join('data', args.data)
+dir = os.path.join('RecomData', args.data)
 n_users, n_items, tr_data, te_data, train_idx,  \
     valid_idx, test_idx, social_data = load_data(dir)
 items_embed, cores_embed = load_embed(dir)      \
