@@ -114,6 +114,9 @@ def load_social(file, n_users):
     return data
 
 
+def load_cates():
+    return
+
 
 if __name__ == "__main__":
     try:

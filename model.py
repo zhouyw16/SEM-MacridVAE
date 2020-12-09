@@ -6,7 +6,7 @@ from torch.nn.parameter import Parameter
 
 
 
-def load_net(model, N, M, K, D, tau, dropout, items, cores):
+def load_net(model, N, M, K, D, tau, dropout, items):
     if model == 'MultiDAE':
         return MultiDAE(M, D, dropout)
     elif model == 'MultiVAE':
@@ -14,7 +14,7 @@ def load_net(model, N, M, K, D, tau, dropout, items, cores):
     elif model == 'DisenVAE':
         return DisenVAE(M, K, D, tau, dropout)
     elif model == 'DisenEVAE':
-        return DisenEVAE(M, K, D, tau, dropout, items, cores)
+        return DisenEVAE(M, K, D, tau, dropout, items)
     elif model == 'DisenSR':
         return DisenSR(N, M, K, D, tau, dropout)
 
@@ -172,6 +172,7 @@ class DisenVAE(nn.Module):
         X = X.reshape(n * self.K, self.M)           # (n * K) * M
         h = self.encoder(X)                         # (n * K) * D * 2
         mu, logvar = h[:, :self.D], h[:, self.D:]   # (n * k) * D
+        mu = F.normalize(mu)
         return mu, logvar
 
 
@@ -211,11 +212,9 @@ class DisenVAE(nn.Module):
 
 
 class DisenEVAE(DisenVAE):
-    def __init__(self, M, K, D, tau, dropout, items, cores):
+    def __init__(self, M, K, D, tau, dropout, items):
         super(DisenEVAE, self).__init__(M, K, D, tau, dropout)
-
         self.items = items
-        self.cores = cores
 
 
 
