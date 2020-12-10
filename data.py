@@ -12,7 +12,7 @@ def load_data(dir):
     load whole tr_ratings, te_ratings and social information
     '''
     n_users, n_items, train_data, valid_tr_data, valid_te_data, \
-        test_tr_data, test_te_data, social_data = load_perp_data(dir)
+        test_tr_data, test_te_data, embed_data, social_data = load_perp_data(dir)
     empty_data = sparse.csr_matrix(train_data.shape, dtype=np.float)
 
     tr_data = sparse.vstack([train_data, valid_tr_data, test_tr_data])
@@ -26,7 +26,7 @@ def load_data(dir):
     test_idx  = range(n_train + n_valid, n_train + n_valid + n_test)
 
     return n_users, n_items, tr_data, te_data, \
-        train_idx, valid_idx, test_idx, social_data
+        train_idx, valid_idx, test_idx, embed_data, social_data
 
 
 def load_perp_data(dir):
@@ -58,15 +58,22 @@ def load_perp_data(dir):
         n_items)
 
     try:
+        embed_data = load_embed(
+            os.path.join(dir, 'embed_200.npy')
+        )
+    except:
+        embed_data = None
+
+    try:
         social_data = load_social(
             os.path.join(dir, 'social.txt'),
             n_users
         )
     except:
         social_data = None
-    
-    return n_users, n_items, train_data, valid_tr_data, \
-           valid_te_data, test_tr_data, test_te_data, social_data
+
+    return n_users, n_items, train_data, valid_tr_data, valid_te_data, \
+           test_tr_data, test_te_data, embed_data, social_data
 
 
 def load_users_items(file):
@@ -114,18 +121,23 @@ def load_social(file, n_users):
     return data
 
 
+def load_embed(dir):
+    data = np.load(dir)
+    return data
+
+
 def load_cates():
     return
 
 
 if __name__ == "__main__":
     try:
-        dir = os.path.join('data', sys.argv[1])
+        dir = os.path.join('RecomData', sys.argv[1])
     except:
         print('please input a correct directory name.')
         exit()
 
     t = time.time()
     n_users, n_items, tr_data, te_data, train_idx,    \
-        valid_idx, test_idx, social_data = load_data(dir)
+        valid_idx, test_idx, embed_data, social_data = load_data(dir)
     print('%.4fs' % (time.time() - t))

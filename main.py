@@ -12,7 +12,6 @@ from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt 
 
 from data import load_data, load_cates
-from embed import load_embed
 from model import load_net
 
 
@@ -56,9 +55,7 @@ device = torch.device(args.device \
 
 dir = os.path.join('RecomData', args.data)
 n_users, n_items, tr_data, te_data, train_idx,  \
-    valid_idx, test_idx, social_data = load_data(dir)
-items_embed = load_embed(dir)      \
-    if args.model == 'DisenEVAE' else None, None
+    valid_idx, test_idx, items_embed, social_data = load_data(dir)
 net = load_net(args.model, n_users, n_items, args.kfac, args.dfac, 
                args.tau, args.dropout, items_embed)
 net.to(device)

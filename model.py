@@ -52,7 +52,6 @@ class MultiDAE(nn.Module):
     
 
     def encode(self, X):
-        X = F.normalize(X)
         X = self.drop(X)
         h = self.encoder(X)
         return h
@@ -98,7 +97,6 @@ class MultiVAE(nn.Module):
     
 
     def encode(self, X):
-        X = F.normalize(X)
         X = self.drop(X)
         h = self.encoder(X)
         mu = h[:, :self.D]
@@ -167,12 +165,12 @@ class DisenVAE(nn.Module):
 
     def encode(self, X, cates):
         n = X.shape[0]
+        X = self.drop(X)
         X = X.view(n, 1, self.M) *  \
             cates.t().expand(n, self.K, self.M)     # n * K * M
         X = X.reshape(n * self.K, self.M)           # (n * K) * M
         h = self.encoder(X)                         # (n * K) * D * 2
         mu, logvar = h[:, :self.D], h[:, self.D:]   # (n * k) * D
-        mu = F.normalize(mu)
         return mu, logvar
 
 
@@ -214,7 +212,7 @@ class DisenVAE(nn.Module):
 class DisenEVAE(DisenVAE):
     def __init__(self, M, K, D, tau, dropout, items):
         super(DisenEVAE, self).__init__(M, K, D, tau, dropout)
-        self.items = items
+        self.items = Parameter(torch.Tensor(items))
 
 
 
