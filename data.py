@@ -25,8 +25,8 @@ def load_data(dir):
     valid_idx = range(n_train, n_train + n_valid)
     test_idx  = range(n_train + n_valid, n_train + n_valid + n_test)
 
-    return n_users, n_items, tr_data, te_data, \
-        train_idx, valid_idx, test_idx, embed_data, social_data
+    return n_users, n_items, tr_data, te_data, train_idx,       \
+           valid_idx, test_idx, embed_data, social_data
 
 
 def load_perp_data(dir):
@@ -59,7 +59,7 @@ def load_perp_data(dir):
 
     try:
         embed_data = load_embed(
-            os.path.join(dir, 'embed_200.npy')
+            os.path.join(dir, 'embed.npy')
         )
     except:
         embed_data = None
@@ -121,8 +121,8 @@ def load_social(file, n_users):
     return data
 
 
-def load_embed(dir):
-    data = np.load(dir)
+def load_embed(file):
+    data = np.load(file)
     return data
 
 
@@ -138,6 +138,6 @@ if __name__ == "__main__":
         exit()
 
     t = time.time()
-    n_users, n_items, tr_data, te_data, train_idx,    \
-        valid_idx, test_idx, embed_data, social_data = load_data(dir)
+    n_users, n_items, tr_data, te_data, train_idx, valid_idx, \
+        test_idx, embed_data, social_data = load_data(dir)
     print('%.4fs' % (time.time() - t))

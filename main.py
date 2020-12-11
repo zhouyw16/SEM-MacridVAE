@@ -54,8 +54,8 @@ device = torch.device(args.device \
 
 
 dir = os.path.join('RecomData', args.data)
-n_users, n_items, tr_data, te_data, train_idx,  \
-    valid_idx, test_idx, items_embed, social_data = load_data(dir)
+n_users, n_items, tr_data, te_data, train_idx, valid_idx, \
+    test_idx, items_embed, social_data = load_data(dir)
 net = load_net(args.model, n_users, n_items, args.kfac, args.dfac, 
                args.tau, args.dropout, items_embed)
 net.to(device)

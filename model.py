@@ -1,8 +1,13 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
+
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import scale
 
 
 
@@ -212,7 +217,16 @@ class DisenVAE(nn.Module):
 class DisenEVAE(DisenVAE):
     def __init__(self, M, K, D, tau, dropout, items):
         super(DisenEVAE, self).__init__(M, K, D, tau, dropout)
+
+        # change the feature from X to self.D dimensions
+        items = PCA(n_components=self.D).fit_transform(items)
+        # fit the xavier_normal distribution i.e. mu = 0, std = sqrt(2 / (fan_in + fan_out))
+        items = scale(items, axis=1) * np.sqrt(2 / (M + D))
+        # init the feature of cores
+        cores = KMeans(n_clusters=self.K).fit(items).cluster_centers_
+
         self.items = Parameter(torch.Tensor(items))
+        self.cores = Parameter(torch.Tensor(cores))
 
 
 
