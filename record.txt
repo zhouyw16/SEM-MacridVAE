@@ -1,0 +1,11 @@
+python main.py --data amazon-movies --model MultiDAE --device cuda:0 --mode test
+ndcg@100: 0.08534(±0.00185)     recall@20: 0.11335(±0.00304)    recall@50: 0.17070(±0.00359)    test time: 5.582
+
+python main.py --data amazon-movies --model MultiVAE --device cuda:0 --mode test
+ndcg@100: 0.08924(±0.00193)     recall@20: 0.11699(±0.00307)    recall@50: 0.17539(±0.00362)    test time: 5.294
+
+python main.py --data amazon-movies --model DisenVAE --device cuda:0 --mode test
+ndcg@100: 0.09303(±0.00198)     recall@20: 0.12516(±0.00313)    recall@50: 0.17593(±0.00360)    test time: 7.121
+
+python main.py --data amazon-movies --model DisenEVAE --device cuda:0 --mode test
+ndcg@100: 0.10078(±0.00207)     recall@20: 0.13651(±0.00326)    recall@50: 0.19299(±0.00373)    test time: 7.174
