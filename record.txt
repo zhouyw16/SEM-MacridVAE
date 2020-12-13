@@ -2,10 +2,38 @@ python main.py --data amazon-movies --model MultiDAE --device cuda:0 --mode test
 ndcg@100: 0.08534(±0.00185)     recall@20: 0.11335(±0.00304)    recall@50: 0.17070(±0.00359)    test time: 5.582
 
 python main.py --data amazon-movies --model MultiVAE --device cuda:0 --mode test
-ndcg@100: 0.08924(±0.00193)     recall@20: 0.11699(±0.00307)    recall@50: 0.17539(±0.00362)    test time: 5.294
+ndcg@100: 0.09105(±0.00194)     recall@20: 0.12220(±0.00314)    recall@50: 0.18121(±0.00368)    test time: 7.694
 
 python main.py --data amazon-movies --model DisenVAE --device cuda:0 --mode test
 ndcg@100: 0.09303(±0.00198)     recall@20: 0.12516(±0.00313)    recall@50: 0.17593(±0.00360)    test time: 7.121
 
 python main.py --data amazon-movies --model DisenEVAE --device cuda:0 --mode test
 ndcg@100: 0.10078(±0.00207)     recall@20: 0.13651(±0.00326)    recall@50: 0.19299(±0.00373)    test time: 7.174
+
+
+
+python main.py --data amazon-home --model MultiDAE --epochs 200 --device cuda:6
+ndcg@100: 0.01702(±0.00096)     recall@20: 0.02191(±0.00154)    recall@50: 0.03500(±0.00193)    test time: 13.246  
+
+python main.py --data amazon-home --model MultiVAE --epochs 200 --device cuda:6 
+ndcg@100: 0.01970(±0.00101)     recall@20: 0.02592(±0.00166)    recall@50: 0.04151(±0.00209)    test time: 15.506
+
+python main.py --data amazon-home --model DisenVAE --epochs 100 --device cuda:6 --batch_size 400
+ndcg@100: 0.02105(±0.00104)     recall@20: 0.02521(±0.00162)    recall@50: 0.04256(±0.00211)    test time: 21.498
+
+python main.py --data amazon-home --model DisenEVAE --epochs 100 --device cuda:6 --batch_size 400
+ndcg@100: 0.02565(±0.00121)     recall@20: 0.03347(±0.00189)    recall@50: 0.05170(±0.00233)    test time: 21.60
+
+
+
+python main.py --data amazon-instruments --model MultiDAE --epochs 200 --device cuda:6
+ndcg@100: 0.03894(±0.00469)	recall@20: 0.05590(±0.00807)	recall@50: 0.08349(±0.00965)
+
+python main.py --data amazon-instruments --model MultiVAE --epochs 200 --device cuda:6
+ndcg@100: 0.03998(±0.00480)	recall@20: 0.06249(±0.00848)	recall@50: 0.08382(±0.00971)
+
+python main.py --data amazon-instruments --model DisenVAE --epochs 100 --device cuda:6
+ndcg@100: 0.03586(±0.00430)	recall@20: 0.04763(±0.00736)	recall@50: 0.08260(±0.00964)	
+
+python main.py --data amazon-instruments --model DisenEVAE --epochs 100 --device cuda:6
+ndcg@100: 0.04101(±0.00475)	recall@20: 0.06361(±0.00851)	recall@50: 0.09097(±0.01006)

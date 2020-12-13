@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import argparse
 
@@ -33,16 +34,15 @@ parser.add_argument('--kfac', type=int, default=7)
 parser.add_argument('--dfac', type=int, default=200)
 parser.add_argument('--tau', type=float, default=0.1)
 parser.add_argument('--device', type=str, default='cpu',
-                    help='cpu, cuda')
+                    help='cpu, cuda:n')
 args = parser.parse_args()
 
 
 if args.seed < 0:
     args.seed = int(time.time())
-info = '%s-%gL-%dE-%dB-%gW-%gD-%gb-%dk-%dd-%gt-%ds' \
-    % (args.data, args.lr, args.epochs, args.batch_size,
-       args.weight_decay, args.dropout, args.beta,
-       args.kfac, args.dfac, args.tau, args.seed)
+info = '%s-%s-%dE-%dB-%gL-%gW-%gD-%gb-%dk-%dd-%gt-%ds' \
+    % (args.data, args.model, args.epochs, args.batch_size, args.lr, args.weight_decay, 
+       args.dropout, args.beta, args.kfac, args.dfac, args.tau, args.seed)
 print(info)
 
 
@@ -97,12 +97,12 @@ def train(net, train_idx, valid_idx):
             running_loss += loss.item()
             update += 1
 
-        print('[%3d] loss: %.3f' % (epoch, running_loss / n_batches), end='\t')
+        print('[%3d] loss: %.3f' % (epoch, running_loss / n_batches), end='\t', file=log)
         n100, r20, r50 = test(net, valid_idx)
         if n100 > best_n100:
             best_n100 = n100
-            torch.save(net.state_dict(), 'model/%s.pkl' % args.model)
-        print('time: %.3f' % (time.time() - t))
+            torch.save(net.state_dict(), 'run/%s/model.pkl' % info)
+        print('time: %.3f' % (time.time() - t), file=log)
 
 
 def test(net, idx):
@@ -135,9 +135,9 @@ def test(net, idx):
     r20s = torch.cat(r20s)
     r50s = torch.cat(r50s)
 
-    print('ndcg@100: %.5f(±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t')
-    print('recall@20: %.5f(±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t')
-    print('recall@50: %.5f(±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t')
+    print('ndcg@100: %.5f(±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t', file=log)
+    print('recall@20: %.5f(±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t', file=log)
+    print('recall@50: %.5f(±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t', file=log)
     return n100s.mean(), r20s.mean(), r50s.mean()
 
 
@@ -293,6 +293,12 @@ if not os.path.exists('model'):
     os.mkdir('model')
 if not os.path.exists('run'):
     os.mkdir('run')
+if not os.path.exists('run/%s' % info):
+    os.mkdir('run/%s' % info)
+
+log = open('run/%s/log.txt' % info, mode='a')
+log = sys.stdout
+
 
 if args.mode == 'train':
     print('training ...')
@@ -307,14 +313,19 @@ if args.mode == 'train':
 if args.mode == 'train' or args.mode == 'test':
     print('testing ...')
     t = time.time()
-    net.load_state_dict(torch.load('model/%s.pkl' % args.model))
+    net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     test(net, test_idx)
     print('test time: %.3f' % (time.time() - t))
 
 
 if args.mode == 'visualize':
     print('visualizing...')
+    exit()
+    # TODO
     t = time.time()
-    net.load_state_dict(torch.load('model/%s.pkl' % args.model))
+    net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     visualize(net, train_idx)
     print('test time: %.3f' % (time.time() - t))
+
+
+log.close()
