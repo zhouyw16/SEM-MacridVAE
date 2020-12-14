@@ -26,6 +26,20 @@ ndcg@100: 0.02565(±0.00121)     recall@20: 0.03347(±0.00189)    recall@50: 0.0
 
 
 
+python main.py --data amazon-clothing --model MultiDAE --epochs 200 --batch_size 200 --device cuda:6
+ndcg@100: 0.00698(±0.00049)     recall@20: 0.00889(±0.00079)    recall@50: 0.01486(±0.00102)    test time: 67.764
+
+python main.py --data amazon-clothing --model MultiVAE --epochs 200 --batch_size 200 --device cuda:6
+ndcg@100: 0.00741(±0.00050)     recall@20: 0.01095(±0.00089)    recall@50: 0.01603(±0.00107)    test time: 67.196 
+
+python main.py --data amazon-clothing --model DisenVAE --epochs 50 --batch_size 100 --device cuda:6
+ndcg@100: 0.01172(±0.00066)     recall@20: 0.01577(±0.00105)    recall@50: 0.02478(±0.00132)    test time: 125.630
+
+python main.py --data amazon-clothing --model DisenEVAE --epochs 50 --batch_size 100 --device cuda:6
+ndcg@100: 0.01260(±0.00068)     recall@20: 0.01762(±0.00111)    recall@50: 0.02724(±0.00138)    test time: 147.679
+
+
+
 python main.py --data amazon-instruments --model MultiDAE --epochs 200 --device cuda:6
 ndcg@100: 0.03894(±0.00469)	recall@20: 0.05590(±0.00807)	recall@50: 0.08349(±0.00965)
 

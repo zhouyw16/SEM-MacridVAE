@@ -25,7 +25,7 @@ parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
 parser.add_argument('--lr', type=float, default=1e-3)
-parser.add_argument('--epochs', type=int, default=200)
+parser.add_argument('--epochs', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=800)
 parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -109,6 +109,8 @@ def test(net, idx):
     net.eval()
     n_test = len(idx)
     n100s, r20s, r50s = [], [], []
+
+    t = time.time()
     with torch.no_grad():
         for start_idx in range(0, n_test, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_test)
@@ -186,62 +188,55 @@ def visualize(net, idx):
     cores = net.state_dict()['cores'].detach().cpu()
 
     users = F.normalize(users)  \
-            .view(n_users, args.kfac, args.dfac)
+            .view(-1, args.kfac, args.dfac)
     items = F.normalize(items)
     cores = F.normalize(cores)
 
     # align categories with prototypes
-    items_cates = load_cates()
+    items_cates = load_cates(dir, n_items, args.kfac)
     items_cates = match_cores_cates(items, cores, items_cates)
     items_item, items_cate = items_cates.nonzero()
 
     # users and the categories they bought
-    assert sparse.isspmatrix(tr_data) and sparse.isspmatrix(items_cates)
-    t = time.time()
-    users_cates = np.dot(tr_data[idx], items_cates)
-    print(time.time() - t)
-    t = time.time()
-    users_cates_ = tr_data[idx] * items_cates
-    print(time.time() - t)
-    print((users_cates == users_cates_).all())
+    assert sparse.isspmatrix(tr_data)
+    users_cates = tr_data[idx].dot(items_cates)
     users_user, users_cate = users_cates.nonzero()
     users = users[users_user, users_cate, :]
 
     # nodes (items and users) prediction and ground truth
-    nodes = torch.cat((items, users))
-    print(nodes.shape)
-    nodes_pred = torch.argmax(torch.mm(nodes, cores.t()), dim=1)
-    nodes_true = torch.cat(items_cate, users_cate)
+    nodes = torch.cat((items, users)).numpy()
+    nodes_pred = np.argmax(np.dot(nodes, cores.T), axis=1)
+    nodes_true = np.concatenate((items_cate, users_cate))
 
 
     # plot pictures
     palette = np.array(
-        [[238, 27 , 39 , 80],  # _0. Red
-         [59 , 175, 81 , 80],  # _1. Green
-         [255, 127, 38 , 80],  # _2. Orange
-         [255, 129, 190, 80],  # _3. Pink
-         [153, 153, 153, 80],  # _4. Gray
-         [156, 78 , 161, 80],  # _5. Purple
-         [35 , 126, 181, 80]], # _6. Blue
+        [[35 , 126, 181, 80], # _6. Blue
+        [255, 129, 190, 80],  # _3. Pink
+        [255, 127, 38 , 80],  # _2. Orange
+        [59 , 175, 81 , 80],  # _1. Green
+        [156, 78 , 161, 80],  # _5. Purple
+        [238, 27 , 39 , 80],  # _0. Red
+        [153, 153, 153, 80]], # _4. Gray
         dtype=np.float) / 255.0
     
     col_pred = palette[nodes_pred]
     col_true = palette[nodes_true]
 
     try:
-        nodes_2d = np.load('run/tsne.npy')
+        nodes_2d = np.load('run/%s/tsne.npy' % info)
     except:
         print('tsne...')
         nodes_kd = PCA(n_components=args.kfac).fit_transform(nodes) \
                    if args.dfac > args.kfac else nodes
         nodes_2d = TSNE(n_jobs=8).fit_transform(nodes_kd)
-        np.save('run/tsne.npy')
+        np.save('run/%s/tsne.npy' % info, nodes_2d)
     plot('tsne2d-nodes-pred', nodes_2d, col_pred)
-    plot('tsne2d-nodes-gold', nodes_2d, col_true)
+    plot('tsne2d-nodes-true', nodes_2d, col_true)
     plot('tsne2d-items-pred', nodes_2d[:n_items], col_pred[:n_items])
-    plot('tsne2d-items-gold', nodes_2d[:n_items], col_true[:n_items])
+    plot('tsne2d-items-true', nodes_2d[:n_items], col_true[:n_items])
     plot('tsne2d-users-pred', nodes_2d[n_items:], col_pred[n_items:])
-    plot('tsne2d-users-gold', nodes_2d[n_items:], col_true[n_items:])
+    plot('tsne2d-users-true', nodes_2d[n_items:], col_true[n_items:])
 
 
 def match_cores_cates(items, cores, items_cates):
@@ -255,59 +250,50 @@ def match_cores_cates(items, cores, items_cates):
     cates = np.argmax(items_cates, axis=1)
     cates_centers = [torch.sum(items[cates == ki], dim=0, keepdim=True) 
                     for ki in range(args.kfac)]
-    cates_centers = torch.cat(cates_centers)
+    cates_centers = torch.cat(cates_centers, dim=0)
     cates_centers = F.normalize(cates_centers)
     cores_cates = torch.mm(cores, cates_centers.t())
     cates2cores = torch.argmax(cores_cates, dim=1)
     cores2cates = torch.argmax(cores_cates, dim=0)
 
-    print('cores: ', end='  ')
-    print('%d' % ki for ki in range(args.kfac))
-    print('cates: ', end='  ')
-    print('%d' % cates2cores[ki] for ki in range(args.kfac))
-    print()
-    print('cates: ', end='  ')
-    print('%d' % ki for ki in range(args.kfac))
-    print('cores: ', end='  ')
-    print('%d' % cores2cates[ki] for ki in range(args.kfac))
+    print('cates:', cates2cores)
+    print('cores:', cores2cates)
 
-    if len(set(cores2cates)) == args.kfac and  \
-       len(set(cates2cores)) == args.kfac:
-        for ki in args.kfac:
-            if cores2cates[cates2cores[ki]] != ki:
-                break
-        else:
-            return items_cates[:, cates2cores]
+    # if len(set(cores2cates)) == args.kfac and  \
+    #    len(set(cates2cores)) == args.kfac:
+        # for ki in range(args.kfac):
+        #     if cores2cates[cates2cores[ki]] != ki:
+        #         break
+        # else:
+    return items_cates[:, cates2cores]
     print('Some prototypes do not align well with categories.')
     exit()
 
 
-def plot(fname, xy, color, marksz=2.0):
+def plot(fname, xy, color, marksz=1.0):
     plt.figure()
     plt.scatter(x=xy[:, 0], y=xy[:, 1], c=color, s=marksz)
-    plt.savefig('%s.png' % fname)
+    plt.savefig('run/%s/%s.png' % (info, fname))
 
 
 
-if not os.path.exists('model'):
-    os.mkdir('model')
-if not os.path.exists('run'):
-    os.mkdir('run')
-if not os.path.exists('run/%s' % info):
-    os.mkdir('run/%s' % info)
-
-log = open('run/%s/log.txt' % info, mode='a')
 log = sys.stdout
 
 
 if args.mode == 'train':
+    if not os.path.exists('run'):
+        os.mkdir('run')
+    if not os.path.exists('run/%s' % info):
+        os.mkdir('run/%s' % info)
+    log = open('run/%s/log.txt' % info, mode='a')
+    
     print('training ...')
     t = time.time()
     try:
         train(net, train_idx, valid_idx)
     except KeyboardInterrupt:
         print('terminate training...')
-    print('train time: %.3f' % (time.time() - t))
+    print('train time: %.3f' % (time.time() - t), file=log)
 
 
 if args.mode == 'train' or args.mode == 'test':
@@ -315,13 +301,13 @@ if args.mode == 'train' or args.mode == 'test':
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     test(net, test_idx)
-    print('test time: %.3f' % (time.time() - t))
+    print('test time: %.3f' % (time.time() - t), file=log)
 
 
 if args.mode == 'visualize':
+    assert args.model == 'DisenVAE' or args.model == 'DisenEVAE'
+
     print('visualizing...')
-    exit()
-    # TODO
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     visualize(net, train_idx)

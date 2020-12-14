@@ -115,8 +115,8 @@ def load_valid_test(tr_file, te_file, n_items):
 
 def load_social(file, n_users):
     df = pd.read_csv(file)
-    trustor, trustee = df['trustor'], df['trustee']
-    data = sparse.csr_matrix((np.ones_like(trustor), (trustor, trustee)),
+    trustors, trustees = df['trustor'], df['trustee']
+    data = sparse.csr_matrix((np.ones_like(trustors), (trustors, trustees)),
                             shape=(n_users, n_users), dtype=np.float)
     return data
 
@@ -126,8 +126,30 @@ def load_embed(file):
     return data
 
 
-def load_cates():
-    return
+def load_cates(dir, n_items, k_cates):
+    file = os.path.join(dir, 'prep', 'categorial.txt')
+    df = pd.read_csv(file)
+    items, cates = df['item'], df['cate']
+    n_cates = np.max(cates) + 1
+    k_cates = min(k_cates, n_cates)
+
+    # create sparse matrix
+    data = sparse.csr_matrix((np.ones_like(items), (items, cates)),
+                            shape=(n_items, n_cates), dtype=np.float)
+    # to dense matrix
+    data = data.toarray()
+    # choose top k categories with most items
+    cates_id = np.argsort(np.sum(data, 0)[-k_cates:])
+    data = data[:, cates_id]
+    # make every item belong to unique category
+    eps = 1e-6
+    item_cate = [np.random.choice(k_cates, 1, p=(item_cates / item_cates.sum()))[0] \
+                for item_cates in (data + eps)]
+    data = np.eye(k_cates)[item_cate, :]
+    
+    assert np.min(np.sum(data, axis=1)) == 1
+    assert np.max(np.sum(data, axis=1)) == 1
+    return data
 
 
 if __name__ == "__main__":
