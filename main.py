@@ -97,12 +97,12 @@ def train(net, train_idx, valid_idx):
             running_loss += loss.item()
             update += 1
 
-        print('[%3d] loss: %.3f' % (epoch, running_loss / n_batches), end='\t', file=log)
+        print('[%3d] loss: %.3f' % (epoch, running_loss / n_batches), end='\t', file=log, flush=True)
         n100, r20, r50 = test(net, valid_idx)
         if n100 > best_n100:
             best_n100 = n100
             torch.save(net.state_dict(), 'run/%s/model.pkl' % info)
-        print('time: %.3f' % (time.time() - t), file=log)
+        print('time: %.3f' % (time.time() - t), file=log, flush=True)
 
 
 def test(net, idx):
@@ -137,15 +137,15 @@ def test(net, idx):
     r20s = torch.cat(r20s)
     r50s = torch.cat(r50s)
 
-    print('ndcg@100: %.5f(±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t', file=log)
-    print('recall@20: %.5f(±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t', file=log)
-    print('recall@50: %.5f(±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t', file=log)
+    print('ndcg@100: %.5f(±%.5f)' % (n100s.mean(), n100s.std() / np.sqrt(len(n100s))), end='\t', file=log, flush=True)
+    print('recall@20: %.5f(±%.5f)' % (r20s.mean(), r20s.std() / np.sqrt(len(r20s))), end='\t', file=log, flush=True)
+    print('recall@50: %.5f(±%.5f)' % (r50s.mean(), r50s.std() / np.sqrt(len(r50s))), end='\t', file=log, flush=True)
     return n100s.mean(), r20s.mean(), r50s.mean()
 
 
 def ndcg_kth(outputs, labels, k=100):
-    _, preds = torch.topk(outputs, k)                       # sorted top k index of outputs
-    _, facts = torch.topk(labels, k)                        # min(k, labels.nnz(dim=1))
+    _, preds = torch.topk(outputs, k)               # sorted top k index of outputs
+    _, facts = torch.topk(labels, k)                # min(k, labels.nnz(dim=1))
     rows = torch.arange(labels.shape[0]).view(-1, 1)
 
     tp = 1.0 / torch.log2(torch.arange(2, k + 2).float())
@@ -157,7 +157,7 @@ def ndcg_kth(outputs, labels, k=100):
 
 
 def recall_kth(outputs, labels, k=50):
-    _, preds = torch.topk(outputs, k, sorted=False)         # top k index
+    _, preds = torch.topk(outputs, k, sorted=False) # top k index
     rows = torch.arange(labels.shape[0]).view(-1, 1)
 
     recall = torch.sum(labels[rows, preds], dim=1) \
@@ -206,18 +206,18 @@ def visualize(net, idx):
     # nodes (items and users) prediction and ground truth
     nodes = torch.cat((items, users)).numpy()
     nodes_pred = np.argmax(np.dot(nodes, cores.T), axis=1)
-    nodes_true = np.concatenate((items_cate, users_cate))
+    nodes_true = np.concatenate((items_cate, users_cate), axis=0)
 
 
     # plot pictures
     palette = np.array(
-        [[35 , 126, 181, 80], # _6. Blue
-        [255, 129, 190, 80],  # _3. Pink
+        [[35 , 126, 181, 80], # _0. Blue
+        [255, 129, 190, 80],  # _1. Pink
         [255, 127, 38 , 80],  # _2. Orange
-        [59 , 175, 81 , 80],  # _1. Green
-        [156, 78 , 161, 80],  # _5. Purple
-        [238, 27 , 39 , 80],  # _0. Red
-        [153, 153, 153, 80]], # _4. Gray
+        [59 , 175, 81 , 80],  # _3. Green
+        [156, 78 , 161, 80],  # _4. Purple
+        [238, 27 , 39 , 80],  # _5. Red
+        [153, 153, 153, 80]], # _6. Gray
         dtype=np.float) / 255.0
     
     col_pred = palette[nodes_pred]
@@ -253,20 +253,20 @@ def match_cores_cates(items, cores, items_cates):
     cates_centers = torch.cat(cates_centers, dim=0)
     cates_centers = F.normalize(cates_centers)
     cores_cates = torch.mm(cores, cates_centers.t())
-    cates2cores = torch.argmax(cores_cates, dim=1)
-    cores2cates = torch.argmax(cores_cates, dim=0)
+    cates2cores = torch.argmax(cores_cates, dim=1).numpy()
+    cores2cates = torch.argmax(cores_cates, dim=0).numpy()
 
-    print('cates:', cates2cores)
-    print('cores:', cores2cates)
+    print('cates:', cates2cores, file=log, flush=True)
+    print('cores:', cores2cates, file=log, flush=True)
 
-    # if len(set(cores2cates)) == args.kfac and  \
-    #    len(set(cates2cores)) == args.kfac:
+    if len(set(cates2cores)) == args.kfac:
+    # and len(set(cates2cores)) == args.kfac:
         # for ki in range(args.kfac):
         #     if cores2cates[cates2cores[ki]] != ki:
         #         break
         # else:
-    return items_cates[:, cates2cores]
-    print('Some prototypes do not align well with categories.')
+        return items_cates[:, cates2cores]
+    print('Some prototypes do not align well with categories.', file=log, flush=True)
     exit()
 
 
@@ -277,23 +277,21 @@ def plot(fname, xy, color, marksz=1.0):
 
 
 
-log = sys.stdout
+if not os.path.exists('run'):
+    os.mkdir('run')
+if not os.path.exists('run/%s' % info):
+    os.mkdir('run/%s' % info)
+log = open('run/%s/log.txt' % info, mode='a')
 
 
 if args.mode == 'train':
-    if not os.path.exists('run'):
-        os.mkdir('run')
-    if not os.path.exists('run/%s' % info):
-        os.mkdir('run/%s' % info)
-    log = open('run/%s/log.txt' % info, mode='a')
-    
     print('training ...')
     t = time.time()
     try:
         train(net, train_idx, valid_idx)
     except KeyboardInterrupt:
         print('terminate training...')
-    print('train time: %.3f' % (time.time() - t), file=log)
+    print('train time: %.3f' % (time.time() - t), file=log, flush=True)
 
 
 if args.mode == 'train' or args.mode == 'test':
@@ -301,7 +299,7 @@ if args.mode == 'train' or args.mode == 'test':
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     test(net, test_idx)
-    print('test time: %.3f' % (time.time() - t), file=log)
+    print('test time: %.3f' % (time.time() - t), file=log, flush=True)
 
 
 if args.mode == 'visualize':
