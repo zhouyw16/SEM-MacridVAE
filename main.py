@@ -4,6 +4,7 @@ import time
 import argparse
 
 import numpy as np
+from numpy.lib.function_base import corrcoef
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -275,6 +276,54 @@ def plot(fname, xy, color, marksz=1.0):
 
 
 
+def disentangle(net, idx):
+    net.eval()
+    n_disen = len(idx)
+    users = []
+    r20s = []
+    with torch.no_grad():
+        for start_idx in range(0, n_disen, args.batch_size):
+            end_idx = min(start_idx + args.batch_size, n_disen)
+            X_tr  = tr_data[idx[start_idx: end_idx]]
+            X_te  = te_data[idx[start_idx: end_idx]]
+            X_tr = torch.Tensor(X_tr.toarray()).to(device)
+            X_te = torch.Tensor(X_te.toarray())
+            if social_data is not None:
+                A = social_data[train_idx[start_idx: end_idx]]
+                A = torch.Tensor(A.toarray()).to(device)
+            else:
+                A = None
+            X_tr_logits, X_mu, _, _, _, _ = net(X_tr, A)
+
+            users.append(X_mu)
+            X_tr_logits[torch.nonzero(X_tr, as_tuple=True)] = float('-inf')
+            X_tr_logits = X_tr_logits.cpu()
+            r20s.append(recall_kth(X_tr_logits, X_te, k=20))
+    r20 = torch.cat(r20s).mean().item()
+
+    users = torch.cat(users).detach().cpu()
+    items = net.state_dict()['items'].detach().cpu()
+
+    users = F.normalize(users)  \
+            .view(-1, args.kfac, args.dfac).numpy()
+    items = F.normalize(items).numpy()
+
+    disen_user = []
+    for ki in range(args.kfac):
+        corr = np.corrcoef(users[:, ki, :], rowvar=False)
+        np.fill_diagonal(corr, 0)
+        disen = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
+        disen_user.append(disen)
+    disen_user = np.array(disen_user).mean()
+
+    corr = np.corrcoef(items, rowvar=False)
+    np.fill_diagonal(corr, 0)
+    disen_item = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
+
+    return disen_user, disen_item, r20
+
+
+
 if args.mode == 'train':
     if not os.path.exists('run'):
         os.mkdir('run')
@@ -305,12 +354,22 @@ if args.mode == 'train' or args.mode == 'test':
 
 if args.mode == 'visualize':
     assert os.path.exists('run/%s' % info)
-    assert args.model == 'DisenVAE' or args.model == 'DisenEVAE'
+    assert args.model in ['DisenVAE', 'DisenEVAE']
     print('visualizing...')
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     visualize(net, train_idx)
     print('visualize time: %.3f' % (time.time() - t))
+
+
+if args.mode == 'disentangle':
+    assert os.path.exists('run/%s' % info)
+    assert args.model in ['MultiVAE', 'DisenVAE', 'DisenEVAE']
+    print('disentangling...')
+    t = time.time()
+    net.load_state_dict(torch.load('run/%s/model.pkl' % info))
+    disentangle(net, test_idx)
+    print('disentangle time: %.3f' % (time.time() - t))
 
 
 log.close()
