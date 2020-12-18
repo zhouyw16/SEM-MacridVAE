@@ -162,4 +162,5 @@ if __name__ == "__main__":
     t = time.time()
     n_users, n_items, tr_data, te_data, train_idx, valid_idx, \
         test_idx, embed_data, social_data = load_data(dir)
+    items_cates = load_cates(dir, n_items, 7)
     print('%.4fs' % (time.time() - t))

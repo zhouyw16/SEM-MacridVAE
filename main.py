@@ -35,6 +35,7 @@ parser.add_argument('--dfac', type=int, default=200)
 parser.add_argument('--tau', type=float, default=0.1)
 parser.add_argument('--device', type=str, default='cpu',
                     help='cpu, cuda:n')
+parser.add_argument('--log', type=str, default='file')
 args = parser.parse_args()
 
 
@@ -252,22 +253,19 @@ def match_cores_cates(items, cores, items_cates):
                     for ki in range(args.kfac)]
     cates_centers = torch.cat(cates_centers, dim=0)
     cates_centers = F.normalize(cates_centers)
-    cores_cates = torch.mm(cores, cates_centers.t())
-    cates2cores = torch.argmax(cores_cates, dim=1).numpy()
-    cores2cates = torch.argmax(cores_cates, dim=0).numpy()
+    cores_cates = torch.mm(cores, cates_centers.t()).numpy()
 
-    print('cates:', cates2cores, file=log, flush=True)
-    print('cores:', cores2cates, file=log, flush=True)
+    cates2cores = np.zeros((args.kfac, ), dtype=np.int)
+    for ki in range(args.kfac):
+        loc = np.where(cores_cates == np.max(cores_cates))
+        core, cate = loc[0][0], loc[1][0]   # (array([r]), array[c])
+        cores_cates[core, :] = - 1.0
+        cores_cates[:, cate] = - 1.0
+        cates2cores[core] = cate
 
-    if len(set(cates2cores)) == args.kfac:
-    # and len(set(cates2cores)) == args.kfac:
-        # for ki in range(args.kfac):
-        #     if cores2cates[cates2cores[ki]] != ki:
-        #         break
-        # else:
-        return items_cates[:, cates2cores]
-    print('Some prototypes do not align well with categories.', file=log, flush=True)
-    exit()
+    print(cates2cores, file=log, flush=True)
+    assert len(set(cates2cores)) == args.kfac
+    return items_cates[:, cates2cores]
 
 
 def plot(fname, xy, color, marksz=1.0):
@@ -277,11 +275,13 @@ def plot(fname, xy, color, marksz=1.0):
 
 
 
-if not os.path.exists('run'):
-    os.mkdir('run')
-if not os.path.exists('run/%s' % info):
-    os.mkdir('run/%s' % info)
-log = open('run/%s/log.txt' % info, mode='a')
+if args.mode == 'train':
+    if not os.path.exists('run'):
+        os.mkdir('run')
+    if not os.path.exists('run/%s' % info):
+        os.mkdir('run/%s' % info)
+log = open('run/%s/log.txt' % info, mode='a') \
+    if args.log == 'file' else sys.stdout
 
 
 if args.mode == 'train':
@@ -295,6 +295,7 @@ if args.mode == 'train':
 
 
 if args.mode == 'train' or args.mode == 'test':
+    assert os.path.exists('run/%s' % info)
     print('testing ...')
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
@@ -303,13 +304,13 @@ if args.mode == 'train' or args.mode == 'test':
 
 
 if args.mode == 'visualize':
+    assert os.path.exists('run/%s' % info)
     assert args.model == 'DisenVAE' or args.model == 'DisenEVAE'
-
     print('visualizing...')
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
     visualize(net, train_idx)
-    print('test time: %.3f' % (time.time() - t))
+    print('visualize time: %.3f' % (time.time() - t))
 
 
 log.close()

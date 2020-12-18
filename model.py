@@ -39,7 +39,7 @@ class MultiDAE(nn.Module):
         super(MultiDAE, self).__init__()
 
         self.M = M
-        self.H = 3 * D
+        self.H = D * 3
         self.D = D
 
         self.encoder = nn.Sequential(
