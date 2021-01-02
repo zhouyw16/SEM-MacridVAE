@@ -126,6 +126,12 @@ def load_embed(file):
     return data
 
 
+def load_urls(dir):
+    file = os.path.join(dir, 'prep', 'images.txt')
+    data = np.loadtxt(file, dtype=np.str)
+    return data
+
+
 def load_cates(dir, n_items, k_cates):
     file = os.path.join(dir, 'prep', 'categorial.txt')
     df = pd.read_csv(file)

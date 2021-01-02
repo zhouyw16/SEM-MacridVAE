@@ -4,7 +4,6 @@ import time
 import argparse
 
 import numpy as np
-from numpy.lib.function_base import corrcoef
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -13,7 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt 
 
-from data import load_data, load_cates
+from data import load_data, load_cates, load_urls
 from model import load_net
 
 
@@ -197,7 +196,8 @@ def visualize(net, idx):
     # align categories with prototypes
     items_cates = load_cates(dir, n_items, args.kfac)
     items_cates = match_cores_cates(items, cores, items_cates)
-    items_item, items_cate = items_cates.nonzero()
+    # items_item, items_cate = items_cates.nonzero()
+    items_cate = np.argmax(items_cates, axis=1)
 
     # users and the categories they bought
     assert sparse.isspmatrix(tr_data)
@@ -254,19 +254,38 @@ def match_cores_cates(items, cores, items_cates):
                     for ki in range(args.kfac)]
     cates_centers = torch.cat(cates_centers, dim=0)
     cates_centers = F.normalize(cates_centers)
-    cores_cates = torch.mm(cores, cates_centers.t()).numpy()
+    cores_cates = torch.mm(cores, cates_centers.t())
+    cates2cores = torch.argmax(cores_cates, dim=1).numpy()
+    cores2cates = torch.argmax(cores_cates, dim=0).numpy()
 
-    cates2cores = np.zeros((args.kfac, ), dtype=np.int)
-    for ki in range(args.kfac):
-        loc = np.where(cores_cates == np.max(cores_cates))
-        core, cate = loc[0][0], loc[1][0]   # (array([r]), array[c])
-        cores_cates[core, :] = - 1.0
-        cores_cates[:, cate] = - 1.0
-        cates2cores[core] = cate
+    print('cates:', cates2cores, file=log, flush=True)
+    print('cores:', cores2cates, file=log, flush=True)
 
-    print(cates2cores, file=log, flush=True)
-    assert len(set(cates2cores)) == args.kfac
-    return items_cates[:, cates2cores]
+    if len(set(cates2cores)) == args.kfac:
+        print('interpretability: 1\tseed: %d' % args.seed)
+        if len(set(cores2cates)) == args.kfac:
+            print('interpretability: 2\tseed: %d' % args.seed)
+            for ki in range(args.kfac):
+                if cores2cates[cates2cores[ki]] != ki:
+                    break
+            else:
+                print('interpretability: 3\tseed: %d' % args.seed)
+        return items_cates[:, cates2cores]
+    print('Some prototypes do not align well with categories.', file=log, flush=True)
+    exit()
+    # cores_cates = torch.mm(cores, cates_centers.t()).numpy()
+
+    # cates2cores = np.zeros((args.kfac, ), dtype=np.int)
+    # for ki in range(args.kfac):
+    #     loc = np.where(cores_cates == np.max(cores_cates))
+    #     core, cate = loc[0][0], loc[1][0]   # (array([r]), array[c])
+    #     cores_cates[core, :] = - 1.0
+    #     cores_cates[:, cate] = - 1.0
+    #     cates2cores[core] = cate
+
+    # print(cates2cores, file=log, flush=True)
+    # assert len(set(cates2cores)) == args.kfac
+    # return items_cates[:, cates2cores]
 
 
 def plot(fname, xy, color, marksz=1.0):
@@ -276,11 +295,11 @@ def plot(fname, xy, color, marksz=1.0):
 
 
 
-def disentangle(net, idx):
+def uncorrelate(net, idx):
     net.eval()
     n_disen = len(idx)
     users = []
-    r20s = []
+    n100s, r20s, r50s = [], [], []
     with torch.no_grad():
         for start_idx in range(0, n_disen, args.batch_size):
             end_idx = min(start_idx + args.batch_size, n_disen)
@@ -298,30 +317,64 @@ def disentangle(net, idx):
             users.append(X_mu)
             X_tr_logits[torch.nonzero(X_tr, as_tuple=True)] = float('-inf')
             X_tr_logits = X_tr_logits.cpu()
+            n100s.append(ndcg_kth(X_tr_logits, X_te, k=100))
             r20s.append(recall_kth(X_tr_logits, X_te, k=20))
+            r50s.append(recall_kth(X_tr_logits, X_te, k=50))
+    n100 = torch.cat(n100s).mean().item()
     r20 = torch.cat(r20s).mean().item()
+    r50 = torch.cat(r50s).mean().item()
 
     users = torch.cat(users).detach().cpu()
-    items = net.state_dict()['items'].detach().cpu()
-
-    users = F.normalize(users)  \
-            .view(-1, args.kfac, args.dfac).numpy()
-    items = F.normalize(items).numpy()
-
-    disen_user = []
-    for ki in range(args.kfac):
-        corr = np.corrcoef(users[:, ki, :], rowvar=False)
+    if args.model == 'MultiVAE':
+        uncorr_item = 1.0
+        corr = np.corrcoef(users, rowvar=False)
         np.fill_diagonal(corr, 0)
-        disen = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
-        disen_user.append(disen)
-    disen_user = np.array(disen_user).mean()
+        uncorr_user = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
+    else:
+        users = F.normalize(users)  \
+                .view(-1, args.kfac, args.dfac).numpy()
+        items = net.state_dict()['items'].detach().cpu()
+        items = F.normalize(items).numpy()
 
-    corr = np.corrcoef(items, rowvar=False)
-    np.fill_diagonal(corr, 0)
-    disen_item = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
+        uncorr_user = []
+        for ki in range(args.kfac):
+            corr = np.corrcoef(users[:, ki, :], rowvar=False)
+            np.fill_diagonal(corr, 0)
+            uncorr = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
+            uncorr_user.append(uncorr)
+        uncorr_user = np.array(uncorr_user).mean()
 
-    return disen_user, disen_item, r20
+        corr = np.corrcoef(items, rowvar=False)
+        np.fill_diagonal(corr, 0)
+        uncorr_item = 1.0 - 1.0 / (args.dfac * (args.dfac - 1)) * np.sum(np.abs(corr))
 
+    return uncorr_user, uncorr_item, n100, r20, r50
+
+
+
+def disentangle(net):
+    urls = load_urls(dir)
+    items = net.state_dict()['items'].detach().cpu()
+    items = F.normalize(items)
+    start = - 1.0
+    stop = 1.0
+    step = (stop - start) / 10
+    item_id = 19436
+
+
+    for did in range(0, 200, 10):
+        jpg_dir = 'run/%s-%s-disen-%d-%d' % (args.data, args.model, item_id, did)
+        if not os.path.exists(jpg_dir): 
+            os.mkdir(jpg_dir)
+        vect = items[item_id, :].clone()
+        items[item_id, :] = torch.zeros_like(vect)  
+        for i in range(10):
+            fac = start + step * i
+            vect[did] = fac
+            new_vect = F.normalize(vect, dim=-1)
+            sim_id = torch.argmax(torch.sum(new_vect * items, dim=1))
+            if urls[sim_id]:
+                os.system('wget %s -O %s/%d.jpg' % (urls[sim_id], jpg_dir, i))
 
 
 if args.mode == 'train':
@@ -362,13 +415,25 @@ if args.mode == 'visualize':
     print('visualize time: %.3f' % (time.time() - t))
 
 
-if args.mode == 'disentangle':
+if args.mode == 'uncorrelate':
     assert os.path.exists('run/%s' % info)
     assert args.model in ['MultiVAE', 'DisenVAE', 'DisenEVAE']
+    print('uncorrelating...')
+    t = time.time()
+    net.load_state_dict(torch.load('run/%s/model.pkl' % info))
+    disen_user, disen_item, n100, r20, r50 = uncorrelate(net, test_idx)
+    with open('run/%s-%s-beta-log.txt' % (args.data, args.model), 'a') as file:
+        file.write('%f\t%f\t%f\t%f\t%f\n' % (disen_user, disen_item, n100, r20, r50))
+    print('uncorrelate time: %.3f' % (time.time() - t))
+
+
+if args.mode == 'disentangle':
+    assert os.path.exists('run/%s' % info)
+    assert args.model in ['DisenVAE', 'DisenEVAE']
     print('disentangling...')
     t = time.time()
     net.load_state_dict(torch.load('run/%s/model.pkl' % info))
-    disentangle(net, test_idx)
+    disentangle(net)
     print('disentangle time: %.3f' % (time.time() - t))
 
 
