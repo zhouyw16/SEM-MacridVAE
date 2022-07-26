@@ -1,13 +1,11 @@
 # Readme
 
-计76 周煜威
-
 
 
 ## 文件结构
 
 * main.py    训练、测试、可视化的**主要代码**
-* model.py    不同模型的结构，包括MultiDAE, MultiVAE, **DisenVAE**(马坚鑫), **DisenEVAE**(加入初始化), DisenSR(加入社交信息)
+* model.py    不同模型的结构，包括MultiDAE, MultiVAE, **DisenVAE**(马坚鑫，即MacridVAE), **DisenEVAE**(加入初始化，即SEM-MacridVAE)
 * data.py    读取数据集，并拆分为训练集、验证集的训练部分、验证集的测试部分、测试集的训练部分、测试集的验证部分
 * RecomData    数据集的存放与预处理
   * film-trust    示例数据集
