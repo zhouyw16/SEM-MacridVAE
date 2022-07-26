@@ -20,8 +20,6 @@ def load_net(model, N, M, K, D, tau, dropout, items):
         return DisenVAE(M, K, D, tau, dropout)
     elif model == 'DisenEVAE':
         return DisenEVAE(M, K, D, tau, dropout, items)
-    elif model == 'DisenSR':
-        return DisenSR(N, M, K, D, tau, dropout)
 
 
 

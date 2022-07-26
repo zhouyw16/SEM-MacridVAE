@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, required=True,
                     help='film-trust, ciao-dvd, etc.')
 parser.add_argument('--model', type=str, default='DisenVAE',
-                    help='MultiDAE, MultiVAE, DisenVAE, DisenVAE')
+                    help='MultiDAE, MultiVAE, DisenVAE, DisenEVAE')
 parser.add_argument('--mode', type=str, default='train',
                     help='train, test, visualize')
 parser.add_argument('--seed', type=int, default=98765)
