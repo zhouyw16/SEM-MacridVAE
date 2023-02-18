@@ -37,7 +37,8 @@ python main.py --data <dataset> --model <model> --device <cuda>
 ./DecomData/ml-latest-small:  python prep.py
 ./DecomData:                  python prep.py ml-latest-small
 # 以上两步都已完成，结果已经保存在prep文件中了，
-# 需要注意的是这里的数据处理保存的是打分数量超过5条的用户，而不是像论文中那样的15条（误删了）
+# 需要注意的是这里的数据处理保存的是打分数量超过5条的用户，而不是像论文中那样的15条，
+# 如果要改成和论文里一样，把./DecomData/prep.py文件里面第52行改了就行
 ./:                           python main.py --data ml-latest-small--model DisenEVAE --device cuda:0
 ```
 
