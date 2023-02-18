@@ -1,6 +1,8 @@
 # Readme
 
 
+This repo contains Python codes for [Disentangled Representation Learning for Recommendation. IEEE Transactions on Pattern Analysis and Machine Intelligence 2022](https://ieeexplore.ieee.org/abstract/document/9720218/).
+
 
 ## Files
 
