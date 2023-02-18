@@ -1,3 +1,7 @@
+Records where we keep users who have at least five rating actions are listed as follows. 
+The results listed in the paper are obtained in the setting of keeping users who have at least fifteen rating actions.
+
+
 python main.py --data amazon-movies --model MultiDAE --device cuda:0 --mode test
 ndcg@100: 0.08534(±0.00185)     recall@20: 0.11335(±0.00304)    recall@50: 0.17070(±0.00359)    test time: 5.582
 
