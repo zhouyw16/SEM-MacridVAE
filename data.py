@@ -13,7 +13,7 @@ def load_data(dir):
     '''
     n_users, n_items, train_data, valid_tr_data, valid_te_data, \
         test_tr_data, test_te_data, embed_data, social_data = load_perp_data(dir)
-    empty_data = sparse.csr_matrix(train_data.shape, dtype=np.float)
+    empty_data = sparse.csr_matrix(train_data.shape, dtype=float)
 
     tr_data = sparse.vstack([train_data, valid_tr_data, test_tr_data])
     te_data = sparse.vstack([empty_data, valid_te_data, test_te_data])
@@ -30,7 +30,7 @@ def load_data(dir):
 
 
 def load_perp_data(dir):
-    ''' 
+    '''
     load data from preprocessed txt files
     '''
     dir = os.path.join(dir, 'prep')
@@ -44,17 +44,17 @@ def load_perp_data(dir):
     )
 
     train_data = load_train(
-        os.path.join(dir, 'train.txt'), 
+        os.path.join(dir, 'train.txt'),
         n_items)
 
     valid_tr_data, valid_te_data = load_valid_test(
-        os.path.join(dir, 'valid_tr.txt'), 
-        os.path.join(dir, 'valid_te.txt'), 
+        os.path.join(dir, 'valid_tr.txt'),
+        os.path.join(dir, 'valid_te.txt'),
         n_items)
 
     test_tr_data, test_te_data = load_valid_test(
-        os.path.join(dir, 'test_tr.txt'), 
-        os.path.join(dir, 'test_te.txt'), 
+        os.path.join(dir, 'test_tr.txt'),
+        os.path.join(dir, 'test_te.txt'),
         n_items)
 
     try:
@@ -90,7 +90,7 @@ def load_train(file, n_items):
     n_users = max_idx + 1
 
     data = sparse.csr_matrix((np.ones_like(users), (users, items)),
-                            shape=(n_users, n_items), dtype=np.float)
+                            shape=(n_users, n_items), dtype=float)
     return data
 
 
@@ -107,9 +107,9 @@ def load_valid_test(tr_file, te_file, n_items):
     n_users = max_idx - min_idx + 1
 
     tr_data = sparse.csr_matrix((np.ones_like(tr_users), (tr_users, tr_items)),
-                                shape=(n_users, n_items), dtype=np.float)
+                                shape=(n_users, n_items), dtype=float)
     te_data = sparse.csr_matrix((np.ones_like(te_users), (te_users, te_items)),
-                                shape=(n_users, n_items), dtype=np.float)
+                                shape=(n_users, n_items), dtype=float)
     return tr_data, te_data
 
 
@@ -117,7 +117,7 @@ def load_social(file, n_users):
     df = pd.read_csv(file)
     trustors, trustees = df['trustor'], df['trustee']
     data = sparse.csr_matrix((np.ones_like(trustors), (trustors, trustees)),
-                            shape=(n_users, n_users), dtype=np.float)
+                            shape=(n_users, n_users), dtype=float)
     return data
 
 
@@ -141,7 +141,7 @@ def load_cates(dir, n_items, k_cates):
 
     # create sparse matrix
     data = sparse.csr_matrix((np.ones_like(items), (items, cates)),
-                            shape=(n_items, n_cates), dtype=np.float)
+                            shape=(n_items, n_cates), dtype=float)
     # to dense matrix
     data = data.toarray()
     # choose top k categories with most items
@@ -152,7 +152,7 @@ def load_cates(dir, n_items, k_cates):
     item_cate = [np.random.choice(k_cates, 1, p=(item_cates / item_cates.sum()))[0] \
                 for item_cates in (data + eps)]
     data = np.eye(k_cates)[item_cate, :]
-    
+
     assert np.min(np.sum(data, axis=1)) == 1
     assert np.max(np.sum(data, axis=1)) == 1
     return data

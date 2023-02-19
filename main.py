@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from scipy import sparse
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from matplotlib import pyplot as plt 
+from matplotlib import pyplot as plt
 
 from data import load_data, load_cates, load_urls
 from model import load_net
@@ -42,7 +42,7 @@ args = parser.parse_args()
 if args.seed < 0:
     args.seed = int(time.time())
 info = '%s-%s-%dE-%dB-%gL-%gW-%gD-%gb-%dk-%dd-%gt-%ds' \
-    % (args.data, args.model, args.epochs, args.batch_size, args.lr, args.weight_decay, 
+    % (args.data, args.model, args.epochs, args.batch_size, args.lr, args.weight_decay,
        args.dropout, args.beta, args.kfac, args.dfac, args.tau, args.seed)
 print(info)
 
@@ -57,13 +57,13 @@ device = torch.device(args.device \
 dir = os.path.join('RecomData', args.data)
 n_users, n_items, tr_data, te_data, train_idx, valid_idx, \
     test_idx, items_embed, social_data = load_data(dir)
-net = load_net(args.model, n_users, n_items, args.kfac, args.dfac, 
+net = load_net(args.model, n_users, n_items, args.kfac, args.dfac,
                args.tau, args.dropout, items_embed)
 net.to(device)
 
 
 def train(net, train_idx, valid_idx):
-    optimizer = optim.Adam(net.parameters(), lr=args.lr, 
+    optimizer = optim.Adam(net.parameters(), lr=args.lr,
                            weight_decay=args.weight_decay)
     criterion = net.loss_fn
 
@@ -133,7 +133,7 @@ def test(net, idx):
             n100s.append(ndcg_kth(X_tr_logits, X_te, k=100))
             r20s.append(recall_kth(X_tr_logits, X_te, k=20))
             r50s.append(recall_kth(X_tr_logits, X_te, k=50))
-            
+
     n100s = torch.cat(n100s)
     r20s = torch.cat(r20s)
     r50s = torch.cat(r50s)
@@ -183,7 +183,7 @@ def visualize(net, idx):
                 A = None
             _, X_mu, _, _, _, _ = net(X, A)
             users.append(X_mu)
-    
+
     users = torch.cat(users).detach().cpu()
     items = net.state_dict()['items'].detach().cpu()
     cores = net.state_dict()['cores'].detach().cpu()
@@ -220,8 +220,8 @@ def visualize(net, idx):
         [156, 78 , 161, 80],  # _4. Purple
         [238, 27 , 39 , 80],  # _5. Red
         [153, 153, 153, 80]], # _6. Gray
-        dtype=np.float) / 255.0
-    
+        dtype=float) / 255.0
+
     col_pred = palette[nodes_pred]
     col_true = palette[nodes_true]
 
@@ -243,14 +243,14 @@ def visualize(net, idx):
 
 def match_cores_cates(items, cores, items_cates):
     '''
-    align categories with prototypes 
+    align categories with prototypes
 
     items = embedding matrix [m, d]
     cores = embedding matrix [k, d]
     items_cates = sparse one-hot matrix [m, k]
     '''
     cates = np.argmax(items_cates, axis=1)
-    cates_centers = [torch.sum(items[cates == ki], dim=0, keepdim=True) 
+    cates_centers = [torch.sum(items[cates == ki], dim=0, keepdim=True)
                     for ki in range(args.kfac)]
     cates_centers = torch.cat(cates_centers, dim=0)
     cates_centers = F.normalize(cates_centers)
@@ -364,10 +364,10 @@ def disentangle(net):
 
     for did in range(0, 200, 10):
         jpg_dir = 'run/%s-%s-disen-%d-%d' % (args.data, args.model, item_id, did)
-        if not os.path.exists(jpg_dir): 
+        if not os.path.exists(jpg_dir):
             os.mkdir(jpg_dir)
         vect = items[item_id, :].clone()
-        items[item_id, :] = torch.zeros_like(vect)  
+        items[item_id, :] = torch.zeros_like(vect)
         for i in range(10):
             fac = start + step * i
             vect[did] = fac

@@ -1,0 +1,11 @@
+# Data files
+data
+RecomData
+
+# Generated files
+__pycache__
+run
+
+# Config files
+.python-version
+.vscode
