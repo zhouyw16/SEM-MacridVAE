@@ -2,7 +2,7 @@
 
 This repo contains Python codes for **Disentangled Representation Learning for Recommendation. IEEE Transactions on Pattern Analysis and Machine Intelligence 2022**.
 
-The paper can be downloaded from the [official website](https://ieeexplore.ieee.org/abstract/document/9720218/) or in the [docs directory](./docs/Disentangled Representation Learning for Recommendation.pdf).
+The paper can be downloaded from the [official website](https://ieeexplore.ieee.org/abstract/document/9720218/) or in the [docs directory](https://github.com/zhouyw16/SEM-MacridVAE/tree/master/docs).
 
 
 ## Files
