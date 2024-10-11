@@ -1,0 +1,20 @@
+id,count
+Comedy,1589
+Drama,1307
+Action,1136
+Adventure,418
+Crime,324
+Documentary,243
+Horror,192
+Animation,179
+Children,91
+Thriller,40
+Sci-Fi,29
+Mystery,28
+Fantasy,23
+(no genres listed),14
+Romance,14
+Western,12
+Musical,11
+Film-Noir,7
+War,3
