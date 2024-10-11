@@ -1,7 +1,8 @@
 # Readme
 
+This repo contains Python codes for **Disentangled Representation Learning for Recommendation. IEEE Transactions on Pattern Analysis and Machine Intelligence 2022**.
 
-This repo contains Python codes for [Disentangled Representation Learning for Recommendation. IEEE Transactions on Pattern Analysis and Machine Intelligence 2022](https://ieeexplore.ieee.org/abstract/document/9720218/).
+The paper can be downloaded from the [official website](https://ieeexplore.ieee.org/abstract/document/9720218/) or in the [docs directory](./docs/Disentangled Representation Learning for Recommendation.pdf).
 
 
 ## Files
@@ -16,8 +17,6 @@ This repo contains Python codes for [Disentangled Representation Learning for Re
     * **embed.npy**:    image features file
   * **prep.py**:    further process data
 * **run**:    save log and model
-
-
 
 ## Run
 
@@ -43,5 +42,18 @@ python main.py --data <dataset> --model <model> --device <cuda>
 ./:                           python main.py --data ml-latest-small --model DisenEVAE --device cuda:0
 ```
 
+## Cite
 
+```
+@article{wang2022disentangled,
+  title={Disentangled representation learning for recommendation},
+  author={Wang, Xin and Chen, Hong and Zhou, Yuwei and Ma, Jianxin and Zhu, Wenwu},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume={45},
+  number={1},
+  pages={408--424},
+  year={2022},
+  publisher={IEEE}
+}
+```
 

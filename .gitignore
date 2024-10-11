@@ -9,3 +9,4 @@ run
 # Config files
 .python-version
 .vscode
+.DS_Store
